@@ -2,7 +2,7 @@
 
 An interactive 3D presentation of an upcycled recycling bin where throwing away a plastic bottle counts as a vote.
 
-**[Live demo](https://sandipkumarpaul.github.io/smart_artistic_voting_bin/)** · [Jump straight to the voting demo](https://sandipkumarpaul.github.io/smart_artistic_voting_bin/#step=6) · [Early prototype](https://sandipkumarpaul.github.io/smart_artistic_voting_bin/prototype.html)
+**[Live demo](https://sandipkumarpaul.github.io/smart_artistic_voting_bin/)** · [Jump straight to the voting demo](https://sandipkumarpaul.github.io/smart_artistic_voting_bin/#step=6)
 
 ![Step 7: the IoT dashboard, with live vote share, weight per side and staff revenue](docs/screenshots/dashboard.png)
 
@@ -86,6 +86,5 @@ Then open <http://localhost:8000>. Opening `index.html` directly in a browser wo
 
 ```
 index.html          The presentation (scene, UI and logic in one file)
-prototype.html      First iteration: a simpler concept visualizer with the same 7 steps
 docs/screenshots/   Images used in this README
 ```
