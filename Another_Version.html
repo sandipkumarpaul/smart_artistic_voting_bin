@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Plastic Voting Bin — Interactive 3D Workshop Presentation</title>
+  <meta name="description" content="Interactive 3D presentation showing how a raw plastic drum is transformed into an automated IoT-enabled Smart Voting Bin for school recycling workshops." />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700;900&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome (Free Tier) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Three.js r128 + OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',sans-serif;user-select:none;overflow:hidden;background:#050810;color:#e2e8f0}
+    .font-outfit{font-family:'Outfit',sans-serif}
+    .font-orbitron{font-family:'Orbitron',monospace}
+
+    /* ── Glassmorphism ── */
+    .glass{background:rgba(10,18,36,0.78);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.08)}
+    .glass-light{background:rgba(30,41,59,0.55);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06)}
+
+    /* ── Loading Screen ── */
+    #loading-screen{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#050810;transition:opacity .6s ease}
+    #loading-screen.fade-out{opacity:0;pointer-events:none}
+    .loader-ring{width:72px;height:72px;border:4px solid rgba(6,182,212,0.15);border-top-color:#06b6d4;border-radius:50%;animation:spin .9s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ── Welcome Splash ── */
+    #welcome-splash{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(6,182,212,0.08) 0%,#050810 70%);transition:opacity .8s ease}
+    #welcome-splash.fade-out{opacity:0;pointer-events:none}
+
+    /* ── Narrative card transitions ── */
+    #narrative-card{transition:opacity .35s ease,transform .35s ease}
+    #narrative-card.transitioning{opacity:0;transform:translateY(8px)}
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-track{background:rgba(15,23,42,0.5)}
+    ::-webkit-scrollbar-thumb{background:rgba(51,65,85,0.7);border-radius:4px}
+
+    /* ── HUD pulse ── */
+    @keyframes hudPulse{0%,100%{opacity:.92;transform:scale(1)}50%{opacity:1;transform:scale(1.015)}}
+    .hud-pulse{animation:hudPulse 3s infinite ease-in-out}
+
+    /* ── Particle canvas ── */
+    #particle-canvas{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.45}
+  </style>
+</head>
+<body class="h-screen w-screen relative overflow-hidden">
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║         LOADING SCREEN                   ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<div id="loading-screen">
+  <div class="loader-ring mb-6"></div>
+  <h2 class="font-outfit font-bold text-xl text-white tracking-wide mb-1">Loading 3D Workshop…</h2>
+  <p class="text-xs text-slate-400">Preparing textures, models & animations</p>
+</div>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║         WELCOME SPLASH                   ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<div id="welcome-splash" class="hidden">
+  <div class="text-center max-w-xl px-6">
+    <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-tr from-cyan-500 to-emerald-400 flex items-center justify-center text-slate-950 text-4xl shadow-2xl shadow-cyan-500/30">
+      <i class="fa-solid fa-recycle"></i>
+    </div>
+    <h1 class="font-outfit font-extrabold text-4xl md:text-5xl text-white mb-3 leading-tight">
+      Smart Plastic <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-emerald-400">Voting Bin</span>
+    </h1>
+    <p class="text-slate-400 text-sm md:text-base mb-2">An Interactive 3D Workshop Presentation</p>
+    <p class="text-slate-500 text-xs mb-8">From raw industrial drum → automated IoT recycling infrastructure</p>
+    <button id="btn-begin" onclick="dismissSplash()" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm px-8 py-3 rounded-2xl shadow-xl shadow-cyan-500/25 transition-all hover:scale-105 active:scale-95">
+      <i class="fa-solid fa-play mr-2"></i> Begin Presentation
+    </button>
+    <p class="text-slate-600 text-[10px] mt-4">Use <kbd class="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-400">←</kbd> <kbd class="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-400">→</kbd> arrow keys or <kbd class="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-400">1</kbd>–<kbd class="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-400">7</kbd> number keys to navigate</p>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║      ATMOSPHERIC PARTICLE LAYER          ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<canvas id="particle-canvas"></canvas>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║         THREE.JS 3D VIEWPORT             ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<div id="canvas-container" class="absolute inset-0 z-0 cursor-grab active:cursor-grabbing"></div>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║         TOP HEADER BAR                   ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<header id="main-ui" class="absolute top-0 left-0 right-0 z-20 p-3 md:p-4 flex justify-between items-center pointer-events-none" style="display:none">
+  <!-- Logo -->
+  <div class="glass px-4 py-2 rounded-2xl flex items-center gap-3 pointer-events-auto">
+    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-400 flex items-center justify-center text-slate-950 font-bold text-lg shadow-lg shadow-cyan-500/20">
+      <i class="fa-solid fa-recycle"></i>
+    </div>
+    <div>
+      <h1 class="font-outfit font-bold text-base md:text-lg leading-tight tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-400">Smart Plastic Voting Bin</h1>
+      <p class="text-[10px] text-cyan-400 font-medium flex items-center gap-1.5">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        Educational Workshop · Interactive 3D Model
+      </p>
+    </div>
+  </div>
+
+  <!-- Presenter Toolbar -->
+  <div class="flex items-center gap-1.5 pointer-events-auto">
+    <button id="btn-sound" onclick="toggleSound()" title="Toggle Sound Effects" class="glass hover:bg-slate-800/80 text-slate-400 hover:text-white w-9 h-9 rounded-xl text-xs flex items-center justify-center transition-all">
+      <i id="icon-sound" class="fa-solid fa-volume-high text-emerald-400"></i>
+    </button>
+    <button onclick="toggleAutoRotate()" title="Auto-Rotate" class="glass hover:bg-slate-800/80 text-slate-400 hover:text-white w-9 h-9 rounded-xl text-xs flex items-center justify-center transition-all">
+      <i id="icon-auto-rotate" class="fa-solid fa-arrows-spin text-cyan-400"></i>
+    </button>
+    <button onclick="toggleViewMode()" title="Toggle Solid / Internal View" class="glass hover:bg-slate-800/80 text-slate-400 hover:text-white px-3 h-9 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all">
+      <i id="icon-view-mode" class="fa-solid fa-cube text-emerald-400"></i>
+      <span id="text-view-mode" class="hidden sm:inline">Solid</span>
+    </button>
+    <button onclick="toggleFullscreen()" title="Fullscreen" class="glass hover:bg-slate-800/80 text-slate-400 hover:text-white w-9 h-9 rounded-xl text-xs flex items-center justify-center transition-all">
+      <i class="fa-solid fa-expand text-slate-300"></i>
+    </button>
+    <button onclick="toggleSpeakerGuide()" title="Workshop Guide" class="glass hover:bg-slate-800/80 text-amber-400 hover:text-amber-300 px-3 h-9 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all border-amber-500/20">
+      <i class="fa-solid fa-lightbulb"></i>
+      <span class="hidden sm:inline">Guide</span>
+    </button>
+  </div>
+</header>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║     LEFT NARRATIVE CARD                  ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<div id="narrative-card" class="absolute top-16 md:top-20 left-3 md:left-5 z-20 w-72 md:w-80 lg:w-96 glass rounded-2xl p-4 md:p-5 shadow-2xl pointer-events-auto border-l-[3px] border-l-cyan-400" style="display:none">
+  <div class="flex items-center gap-2 mb-2">
+    <i id="narrative-icon" class="fa-solid fa-box text-cyan-400 text-base"></i>
+    <span id="narrative-tag" class="text-[10px] font-orbitron uppercase tracking-wider text-cyan-400 font-semibold">Phase 1: Material Sourcing</span>
+  </div>
+  <h3 id="narrative-heading" class="font-outfit font-bold text-sm md:text-base lg:text-lg text-white mb-2 leading-snug">Discarded Industrial Plastic Drum</h3>
+  <p id="narrative-body" class="text-[11px] text-slate-300 leading-relaxed mb-3">
+    We start with an unpolished 200-liter HDPE plastic drum diverted from landfills.
+  </p>
+  <div id="narrative-specs" class="bg-slate-900/60 rounded-xl p-2.5 border border-slate-800 space-y-1.5 text-[11px]"></div>
+</div>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║  RIGHT PRESENTER TOOLKIT PANEL           ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<div id="presenter-panel" class="absolute top-16 md:top-20 right-3 md:right-5 z-20 w-64 md:w-72 glass rounded-2xl p-3 md:p-4 shadow-2xl pointer-events-auto" style="display:none">
+  <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800">
+    <h4 class="font-outfit font-bold text-[11px] text-slate-200 flex items-center gap-1.5">
+      <i class="fa-solid fa-sliders text-cyan-400"></i>Presenter Toolkit
+    </h4>
+    <span class="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-orbitron font-bold">LIVE</span>
+  </div>
+
+  <!-- Prompt Switcher -->
+  <div class="mb-3">
+    <label class="text-[10px] font-semibold text-slate-500 block mb-1">Voting Topic:</label>
+    <select id="prompt-select" onchange="changePrompt(this.value)" class="w-full bg-slate-900/80 border border-slate-700 text-slate-200 text-[11px] rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 font-medium">
+      <option value="Messi vs Ronaldo">⚽ Messi vs Ronaldo</option>
+      <option value="Tea vs Coffee">☕ Tea vs Coffee</option>
+      <option value="Marvel vs DC">🦸 Marvel vs DC</option>
+      <option value="Python vs JS">💻 Python vs JavaScript</option>
+      <option value="Custom">✨ Custom Topic…</option>
+    </select>
+  </div>
+  <div id="custom-prompt-container" class="hidden mb-3 space-y-1.5">
+    <input type="text" id="custom-prompt-title" placeholder="Topic (e.g. Cat vs Dog)" class="w-full bg-slate-900 border border-slate-700 text-[11px] text-white rounded-lg px-2.5 py-1 focus:outline-none focus:border-cyan-400" />
+    <div class="grid grid-cols-2 gap-1.5">
+      <input type="text" id="custom-side-a" placeholder="Side A" class="bg-slate-900 border border-slate-700 text-[11px] text-cyan-400 rounded-lg px-2 py-1 focus:outline-none" />
+      <input type="text" id="custom-side-b" placeholder="Side B" class="bg-slate-900 border border-slate-700 text-[11px] text-amber-400 rounded-lg px-2 py-1 focus:outline-none" />
+    </div>
+    <button onclick="applyCustomPrompt()" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[11px] font-bold py-1 rounded-lg transition-all">Apply</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="space-y-1.5 text-[11px] pt-1">
+    <div class="flex justify-between text-slate-400"><span>Bottles:</span><span id="stat-total-bottles" class="font-orbitron font-bold text-white">0</span></div>
+    <div class="flex justify-between text-slate-400"><span>Mass:</span><span id="stat-total-mass" class="font-orbitron font-bold text-cyan-400">0.00 kg</span></div>
+    <div class="flex justify-between text-slate-400"><span>Revenue:</span><span id="stat-total-income" class="font-orbitron font-bold text-emerald-400">৳ 0.00</span></div>
+  </div>
+  <button onclick="resetSimulation()" class="w-full mt-3 bg-slate-800 hover:bg-slate-700 text-slate-400 text-[10px] font-semibold py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
+    <i class="fa-solid fa-rotate-right"></i>Reset
+  </button>
+</div>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║    BOTTOM STEP NAVIGATION BAR            ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<div id="step-nav" class="absolute bottom-4 md:bottom-6 left-1/2 transform -translate-x-1/2 z-30 w-full max-w-3xl px-3 pointer-events-auto" style="display:none">
+  <div class="glass rounded-2xl p-3 md:p-4 shadow-2xl">
+    <!-- Title row -->
+    <div class="flex justify-between items-center mb-2 px-1">
+      <div class="flex items-center gap-2">
+        <span id="step-badge" class="bg-cyan-500/15 text-cyan-400 font-orbitron text-[10px] font-bold px-2 py-0.5 rounded border border-cyan-500/25">STEP 1/7</span>
+        <h2 id="step-title" class="font-outfit font-bold text-slate-100 text-sm md:text-base truncate max-w-[200px] md:max-w-none">The Raw Industrial Drum</h2>
+      </div>
+      <div class="text-[10px] text-slate-500 flex items-center gap-2">
+        <span class="hidden md:inline"><kbd class="bg-slate-800 px-1 py-0.5 rounded text-[9px] text-slate-400 border border-slate-700">←</kbd> <kbd class="bg-slate-800 px-1 py-0.5 rounded text-[9px] text-slate-400 border border-slate-700">→</kbd></span>
+        <span id="step-pct" class="font-orbitron text-cyan-400 font-bold">14%</span>
+      </div>
+    </div>
+    <!-- Dot Progress -->
+    <div class="grid grid-cols-7 gap-1 mb-3">
+      <div onclick="goToStep(1)" class="step-dot h-1.5 rounded-full cursor-pointer transition-all bg-cyan-400 shadow-sm shadow-cyan-400/50"></div>
+      <div onclick="goToStep(2)" class="step-dot h-1.5 rounded-full cursor-pointer transition-all bg-slate-700 hover:bg-slate-600"></div>
+      <div onclick="goToStep(3)" class="step-dot h-1.5 rounded-full cursor-pointer transition-all bg-slate-700 hover:bg-slate-600"></div>
+      <div onclick="goToStep(4)" class="step-dot h-1.5 rounded-full cursor-pointer transition-all bg-slate-700 hover:bg-slate-600"></div>
+      <div onclick="goToStep(5)" class="step-dot h-1.5 rounded-full cursor-pointer transition-all bg-slate-700 hover:bg-slate-600"></div>
+      <div onclick="goToStep(6)" class="step-dot h-1.5 rounded-full cursor-pointer transition-all bg-slate-700 hover:bg-slate-600"></div>
+      <div onclick="goToStep(7)" class="step-dot h-1.5 rounded-full cursor-pointer transition-all bg-slate-700 hover:bg-slate-600"></div>
+    </div>
+    <!-- Controls row -->
+    <div class="flex items-center justify-between gap-2">
+      <button id="btn-prev" onclick="prevStep()" disabled class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+        <i class="fa-solid fa-chevron-left text-[10px]"></i>Prev
+      </button>
+      <div id="step-actions" class="flex-1 flex justify-center items-center gap-2 overflow-x-auto py-0.5">
+        <span class="text-[11px] text-slate-500">Navigate with Next / Previous</span>
+      </div>
+      <button id="btn-next" onclick="nextStep()" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold px-4 py-1.5 rounded-xl text-[11px] flex items-center gap-1.5 transition-all shadow-lg shadow-cyan-500/15">
+        Next<i class="fa-solid fa-chevron-right text-[10px]"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║  IOT TELEMETRY HUD (STEP 7)              ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<div id="iot-hud" class="absolute inset-0 z-10 pointer-events-none transition-opacity duration-700 opacity-0" style="display:none">
+  <!-- Top Status Bar -->
+  <div class="absolute top-16 md:top-20 left-1/2 -translate-x-1/2 glass border-cyan-500/30 rounded-2xl px-4 py-2 flex items-center gap-4 md:gap-6 shadow-2xl hud-pulse pointer-events-auto text-[10px]">
+    <div class="flex items-center gap-2">
+      <span class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+      <div><div class="font-orbitron uppercase text-slate-500 tracking-wider text-[8px]">STATUS</div><div class="font-orbitron font-bold text-emerald-400">MQTT SYNC: ONLINE</div></div>
+    </div>
+    <div class="h-6 w-px bg-slate-800"></div>
+    <div><div class="font-orbitron uppercase text-slate-500 tracking-wider text-[8px]">LATENCY</div><div class="font-orbitron font-bold text-cyan-400">14ms ESP32</div></div>
+    <div class="h-6 w-px bg-slate-800 hidden md:block"></div>
+    <div class="hidden md:block"><div class="font-orbitron uppercase text-slate-500 tracking-wider text-[8px]">WIFI</div><div class="font-orbitron font-bold text-indigo-400">-48 dBm</div></div>
+  </div>
+
+  <!-- Left: Side A -->
+  <div class="absolute left-3 md:left-8 top-1/2 -translate-y-1/2 w-56 md:w-64 glass border-cyan-500/30 rounded-2xl p-4 shadow-2xl pointer-events-auto space-y-2">
+    <div class="flex items-center justify-between"><span id="hud-a-title" class="font-outfit font-bold text-xs text-cyan-400">SIDE A: MESSI</span><span class="text-[9px] font-orbitron text-slate-500">CH-1</span></div>
+    <div class="text-2xl md:text-3xl font-orbitron font-black text-white" id="hud-a-count">0 <span class="text-[10px] font-normal text-slate-500">BOTTLES</span></div>
+    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800"><div id="hud-bar-a" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full w-0 transition-all duration-500"></div></div>
+    <div class="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wt: <strong id="hud-a-wt" class="text-cyan-400">0.00kg</strong></span><span>Share: <strong id="hud-a-pct" class="text-white">50%</strong></span></div>
+  </div>
+
+  <!-- Right: Side B + Income -->
+  <div class="absolute right-3 md:right-8 top-1/2 -translate-y-1/2 w-60 md:w-72 glass border-amber-500/30 rounded-2xl p-4 shadow-2xl pointer-events-auto space-y-2">
+    <div class="flex items-center justify-between"><span id="hud-b-title" class="font-outfit font-bold text-xs text-amber-400">SIDE B: RONALDO</span><span class="text-[9px] font-orbitron text-slate-500">CH-2</span></div>
+    <div class="text-2xl md:text-3xl font-orbitron font-black text-white" id="hud-b-count">0 <span class="text-[10px] font-normal text-slate-500">BOTTLES</span></div>
+    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800"><div id="hud-bar-b" class="bg-gradient-to-r from-amber-500 to-orange-500 h-full w-0 transition-all duration-500"></div></div>
+    <div class="flex justify-between text-[10px] text-slate-400 font-mono pb-2 border-b border-slate-800"><span>Wt: <strong id="hud-b-wt" class="text-amber-400">0.00kg</strong></span><span>Share: <strong id="hud-b-pct" class="text-white">50%</strong></span></div>
+    <div class="bg-slate-900/80 rounded-lg p-2.5 border border-emerald-500/25">
+      <div class="flex items-center gap-1.5 text-emerald-400 font-bold text-[10px] mb-1"><i class="fa-solid fa-hand-holding-dollar"></i>Staff Revenue</div>
+      <p class="text-[9px] text-slate-500 leading-snug mb-1.5">25 BDT/kg → direct micro-income for campus cleaning staff.</p>
+      <div class="flex justify-between items-baseline"><span class="text-[10px] text-slate-400">Earned:</span><span id="hud-income" class="font-orbitron font-bold text-base text-emerald-400">৳ 0.00</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║     SPEAKER GUIDE MODAL                  ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<div id="modal-guide" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+  <div class="glass border-amber-500/30 w-full max-w-2xl rounded-3xl p-5 shadow-2xl relative max-h-[85vh] flex flex-col">
+    <button onclick="toggleSpeakerGuide()" class="absolute top-4 right-4 text-slate-500 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-lg border border-amber-500/25"><i class="fa-solid fa-graduation-cap"></i></div>
+      <div><h3 class="font-outfit font-bold text-base text-white">Workshop Presenter's Guide</h3><p class="text-[10px] text-slate-500">STEM Concepts & Talking Points</p></div>
+    </div>
+    <div class="overflow-y-auto pr-2 space-y-3 text-[11px] text-slate-400 flex-1">
+      <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-800"><h4 class="font-bold text-cyan-400 mb-1 flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-cyan-500/15 text-cyan-400 flex items-center justify-center text-[9px]">1</span>Upcycling vs Downcycling</h4><p>Standard recycling <em>degrades</em> plastic quality. <strong>Upcycling</strong> transforms low-value waste into a high-value community smart asset — worth more than the sum of its parts.</p></div>
+      <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-800"><h4 class="font-bold text-emerald-400 mb-1 flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-[9px]">2</span>Nudge Theory & Gamified Recycling</h4><p>Fun prompts ("Messi vs Ronaldo") convert passive littering into an interactive game. Students clean the environment while expressing preferences — behavioral economics in action!</p></div>
+      <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-800"><h4 class="font-bold text-amber-400 mb-1 flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-amber-500/15 text-amber-400 flex items-center justify-center text-[9px]">3</span>EEE Hardware Stack</h4><ul class="list-disc pl-4 space-y-0.5"><li><strong>HX711 Load Cells:</strong> Strain-gauge sensors measuring ±2g accuracy</li><li><strong>IR Proximity Sensors:</strong> Contactless bottle detection</li><li><strong>SG90 Servos:</strong> Motorized anti-tamper gate flaps</li><li><strong>ESP32 MCU:</strong> Wi-Fi/BT telemetry to cloud</li></ul></div>
+      <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-800"><h4 class="font-bold text-indigo-400 mb-1 flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-indigo-500/15 text-indigo-400 flex items-center justify-center text-[9px]">4</span>Circular Economy & Social Impact</h4><p>Plastic mass → direct BDT income for campus janitorial staff, creating equitable local micro-economies around every bin.</p></div>
+    </div>
+    <div class="mt-3 pt-2 border-t border-slate-800 flex justify-end">
+      <button onclick="toggleSpeakerGuide()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-bold px-4 py-1.5 rounded-xl transition-all">Back to Presentation</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!--              JAVASCRIPT ENGINE                -->
+<!-- ══════════════════════════════════════════════ -->
+<script>
+// ═══════════════════════════════════════════════
+//  GLOBAL STATE
+// ═══════════════════════════════════════════════
+let currentStep = 1;
+const TOTAL_STEPS = 7;
+let isAutoRotating = false;
+let isTransparentView = false;
+let isVoting = false;          // debounce lock
+let soundEnabled = true;
+const MAX_BOTTLES_PER_SIDE = 25;
+
+let activePrompt = { title: "Messi vs Ronaldo", sideA: "Messi", sideB: "Ronaldo" };
+let activeArtworkPreset = 'A';
+let stats = { countA: 0, weightA: 0, countB: 0, weightB: 0 };
+
+// 3D scene refs
+let scene, camera, renderer, controls;
+let drumGroup, drumBodyMesh, drumBottomMesh, dividerMesh, hoodGroup;
+let leftFlapPivot, rightFlapPivot;
+let leftSensorLight, rightSensorLight, leftLedMesh, rightLedMesh;
+let loadCellA, loadCellB;
+let lcdMesh, lcdCanvas, lcdCtx, lcdTexture;
+let promptCardMesh, promptCanvas, promptCtx, promptTexture;
+let drumCanvas, drumCtx, drumTexture, drumMaterial;
+let rawPlasticMaterial, whitePrimerMaterial, transparentMaterial;
+let bottles = [];
+let particles;
+
+// Audio context (lazy init)
+let audioCtx;
+
+// ═══════════════════════════════════════════════
+//  STEP NARRATIVE DATA
+// ═══════════════════════════════════════════════
+const STEPS = [
+  { title:"Step 1: The Raw Drum", tag:"Phase 1 · Material Sourcing", heading:"Discarded Industrial HDPE Drum", body:"We start with an unpolished raw 200-liter HDPE plastic drum diverted from industrial landfills. High-Density Polyethylene is extremely durable, UV-resistant, waterproof — ideal for heavy-duty upcycling into outdoor community infrastructure.", icon:"fa-box-open",
+    specs:[{l:"Material",v:"HDPE Grade 2 Plastic",c:"text-slate-200"},{l:"Volume",v:"200L (55 Gallons)",c:"text-slate-200"},{l:"Condition",v:"Scratched Industrial Waste",c:"text-amber-400"}]},
+  { title:"Step 2: Prime & Eco-Paint White", tag:"Phase 2 · Surface Preparation", heading:"Eco-Primer & Matte White Canvas", body:"The drum surface is cleaned, sanded, and coated with a non-toxic matte white acrylic primer. This creates a high-contrast canvas ready for student artwork — watch the paint sweep across the surface!", icon:"fa-paint-roller",
+    specs:[{l:"Primer",v:"Low-VOC Eco-Acrylic",c:"text-emerald-400"},{l:"Finish",v:"Matte Smooth White",c:"text-slate-200"},{l:"Visibility",v:"High-Contrast Outdoor",c:"text-cyan-400"}]},
+  { title:"Step 3: Apply Student Artwork", tag:"Phase 3 · Youth Co-Design", heading:"Student Canvas & Community Expression", body:"School students paint murals and themes onto the drum! Custom artwork transforms a dull bin into an inviting public art installation that draws attention and encourages active participation in recycling.", icon:"fa-palette",
+    specs:[{l:"Method",v:"Student Mural & Vinyl Stencil",c:"text-cyan-400"},{l:"Theme",v:"Select Preset Below ↓",c:"text-amber-400"},{l:"Engagement",v:"High Visual Appeal",c:"text-emerald-400"}]},
+  { title:"Step 4: Internal Partition & Sensors", tag:"Phase 4 · Mechanical Engineering", heading:"Dual-Chamber Partition & Scale Platforms", body:"Cutaway view reveals inner mechanics: a central divider splits the bin into two isolated chambers. At the bottom of each sits an HX711 strain-gauge load cell platform for real-time mass measurement at ±2g accuracy.", icon:"fa-layer-group",
+    specs:[{l:"Partition",v:"Recycled Polycarbonate",c:"text-slate-200"},{l:"Sensors",v:"Dual HX711 Load Cells (50kg)",c:"text-cyan-400"},{l:"Accuracy",v:"± 2 grams per bottle",c:"text-emerald-400"}]},
+  { title:"Step 5: The EEE Automation Hood", tag:"Phase 5 · Embedded Systems (EEE)", heading:"Servo Motors, IR Sensors & LCD Display", body:"The smart top lid snaps on! It houses two SG90 motorized servo flaps, infrared proximity sensors at each slot, a retro 16×2 LCD screen, an ESP32 microcontroller board, and a mounted prompt card banner.", icon:"fa-microchip",
+    specs:[{l:"MCU",v:"ESP32 Wi-Fi / BT SoC",c:"text-indigo-400"},{l:"Actuators",v:"Dual SG90 90° Servo Flaps",c:"text-cyan-400"},{l:"Detection",v:"Active IR Proximity Sensors",c:"text-emerald-400"}]},
+  { title:"Step 6: Interactive Voting Demo", tag:"Phase 6 · Live Gamified Loop", heading:"Vote by Recycling a Bottle! (Interactive)", body:"Test the automated voting loop! Click Vote Left or Vote Right. Watch the IR sensor flash green, servo flap swing open, a 3D bottle drop in, and the LCD update weight & count in real-time.", icon:"fa-check-to-slot",
+    specs:[{l:"Action",v:"Cast Bottle into Left or Right",c:"text-amber-400"},{l:"Feedback",v:"IR Flash → Servo → Drop → LCD",c:"text-emerald-400"},{l:"Display",v:"Live LCD Weight Counter",c:"text-cyan-400"}]},
+  { title:"Step 7: IoT Telemetry & Dashboard", tag:"Phase 7 · Cloud Analytics & Impact", heading:"Real-Time Cloud Sync & Staff Income", body:"All bin metrics sync to the cloud via MQTT over the ESP32's Wi-Fi. School administrators monitor analytics dashboards, while plastic mass calculations automatically credit income (BDT) to campus cleaning staff!", icon:"fa-tower-broadcast",
+    specs:[{l:"Protocol",v:"MQTT → AWS / Firebase",c:"text-cyan-400"},{l:"Social Impact",v:"Direct BDT Revenue for Staff",c:"text-emerald-400"},{l:"Outcome",v:"Zero Plastic Waste Campus",c:"text-amber-400"}]}
+];
+
+// ═══════════════════════════════════════════════
+//  PROCEDURAL AUDIO (Web Audio API)
+// ═══════════════════════════════════════════════
+function ensureAudio(){ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
+
+function playBeep(freq=880, dur=0.08, vol=0.15){
+  if(!soundEnabled) return;
+  ensureAudio();
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='sine'; o.frequency.value=freq;
+  g.gain.setValueAtTime(vol, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime+dur);
+}
+
+function playServo(){
+  if(!soundEnabled) return;
+  ensureAudio();
+  const bufSize=audioCtx.sampleRate*0.12, buf=audioCtx.createBuffer(1,bufSize,audioCtx.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<bufSize;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/bufSize*5)*0.15;
+  const s=audioCtx.createBufferSource(); s.buffer=buf; s.connect(audioCtx.destination); s.start();
+}
+
+function playClink(){
+  if(!soundEnabled) return;
+  ensureAudio();
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='triangle'; o.frequency.value=1200;
+  o.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime+0.15);
+  g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.2);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime+0.2);
+}
+
+function playChime(){
+  if(!soundEnabled) return;
+  ensureAudio();
+  [523, 659, 784].forEach((f,i)=>{
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type='sine'; o.frequency.value=f;
+    g.gain.setValueAtTime(0, audioCtx.currentTime+i*0.1);
+    g.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime+i*0.1+0.05);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+i*0.1+0.35);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(audioCtx.currentTime+i*0.1); o.stop(audioCtx.currentTime+i*0.1+0.35);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  PROCEDURAL CANVAS TEXTURES
+// ═══════════════════════════════════════════════
+function createRawPlasticCanvas(){
+  const c=document.createElement('canvas'); c.width=1024; c.height=1024;
+  const x=c.getContext('2d');
+  // Dark industrial gradient
+  const g=x.createLinearGradient(0,0,c.width,c.height);
+  g.addColorStop(0,'#1a2332'); g.addColorStop(0.3,'#0d1521'); g.addColorStop(0.7,'#151e2d'); g.addColorStop(1,'#1a2332');
+  x.fillStyle=g; x.fillRect(0,0,1024,1024);
+  // Scratches
+  x.strokeStyle='rgba(255,255,255,0.04)'; x.lineWidth=1;
+  for(let i=0;i<400;i++){
+    x.beginPath(); const px=Math.random()*1024, py=Math.random()*1024;
+    x.moveTo(px,py); x.lineTo(px+(Math.random()-.5)*80, py+(Math.random()-.5)*80); x.stroke();
+  }
+  // Mold seams
+  x.fillStyle='rgba(0,0,0,0.25)';
+  x.fillRect(0,280,1024,16); x.fillRect(0,720,1024,16);
+  // Embossed text
+  x.save(); x.translate(512,512);
+  x.fillStyle='rgba(255,255,255,0.1)'; x.font='bold 64px Orbitron,monospace'; x.textAlign='center';
+  x.fillText('HDPE — GRADE 2',0,-30);
+  x.font='36px Inter,sans-serif'; x.fillText('INDUSTRIAL CONTAINER',0,25);
+  // Recycling symbol
+  x.strokeStyle='rgba(255,255,255,0.12)'; x.lineWidth=10;
+  x.beginPath(); x.moveTo(0,70); x.lineTo(80,190); x.lineTo(-80,190); x.closePath(); x.stroke();
+  x.font='bold 30px sans-serif'; x.fillText('♻ 2',0,165);
+  x.restore();
+  return c;
+}
+
+function createWhitePrimerCanvas(){
+  const c=document.createElement('canvas'); c.width=1024; c.height=1024;
+  const x=c.getContext('2d');
+  x.fillStyle='#f1f5f9'; x.fillRect(0,0,1024,1024);
+  // Subtle primer spray dots
+  x.fillStyle='rgba(186,198,214,0.25)';
+  for(let i=0;i<4000;i++) x.fillRect(Math.random()*1024,Math.random()*1024,2,2);
+  // Faint mold ring shadows
+  x.fillStyle='rgba(148,163,184,0.15)';
+  x.fillRect(0,280,1024,12); x.fillRect(0,720,1024,12);
+  return c;
+}
+
+function drawArtworkCanvas(preset, prompt){
+  if(!drumCanvas){ drumCanvas=document.createElement('canvas'); drumCanvas.width=1024; drumCanvas.height=1024; drumCtx=drumCanvas.getContext('2d'); }
+  const x=drumCtx, w=1024, h=1024;
+  x.fillStyle='#f1f5f9'; x.fillRect(0,0,w,h);
+
+  if(preset==='A'){
+    // Anime / Manga Style
+    x.save(); x.translate(w/2,h/2);
+    for(let i=0;i<20;i++){
+      x.beginPath(); x.moveTo(0,0); x.arc(0,0,800,(i*Math.PI)/10,((i+.5)*Math.PI)/10);
+      x.fillStyle=i%2===0?'rgba(6,182,212,0.12)':'rgba(236,72,153,0.12)'; x.fill();
+    }
+    x.restore();
+    x.fillStyle='#06b6d4'; x.fillRect(0,160,w,120);
+    x.fillStyle='#ec4899'; x.fillRect(0,740,w,120);
+    x.fillStyle='#0f172a'; x.font='900 52px Orbitron,sans-serif'; x.textAlign='center';
+    x.fillText('RECYCLE BATTLE!',w/2,238);
+    x.font='900 36px serif'; x.fillText('リサイクル',w/2,810);
+    // Anime eyes
+    x.fillStyle='#0f172a';
+    x.beginPath(); x.ellipse(w/2-160,480,40,58,0,0,Math.PI*2); x.fill();
+    x.beginPath(); x.ellipse(w/2+160,480,40,58,0,0,Math.PI*2); x.fill();
+    x.fillStyle='#fff';
+    x.beginPath(); x.arc(w/2-145,465,16,0,Math.PI*2); x.fill();
+    x.beginPath(); x.arc(w/2+175,465,16,0,Math.PI*2); x.fill();
+    x.strokeStyle='#0f172a'; x.lineWidth=8; x.beginPath(); x.arc(w/2,540,45,.1*Math.PI,.9*Math.PI); x.stroke();
+  } else if(preset==='B'){
+    // Youth Climate
+    x.fillStyle='#ecfdf5'; x.fillRect(0,0,w,h);
+    x.fillStyle='rgba(16,185,129,0.2)'; x.beginPath(); x.arc(w/2,h/2,360,0,Math.PI*2); x.fill();
+    x.fillStyle='#10b981'; x.beginPath(); x.arc(w/2,500,160,0,Math.PI*2); x.fill();
+    x.fillStyle='#0284c7';
+    x.beginPath(); x.arc(w/2-40,470,60,0,Math.PI*2); x.fill();
+    x.beginPath(); x.arc(w/2+50,530,50,0,Math.PI*2); x.fill();
+    x.fillStyle='#065f46'; x.font='900 48px Outfit,sans-serif'; x.textAlign='center';
+    x.fillText('SAVE OUR PLANET 🌍',w/2,210);
+    x.font='bold 38px Inter,sans-serif'; x.fillText('ACT NOW · RECYCLE',w/2,800);
+  } else if(preset==='C'){
+    // Cyberpunk Eco
+    x.fillStyle='#080c18'; x.fillRect(0,0,w,h);
+    x.strokeStyle='rgba(6,182,212,0.2)'; x.lineWidth=2;
+    for(let i=0;i<w;i+=70){x.beginPath();x.moveTo(i,0);x.lineTo(i,h);x.stroke();}
+    for(let i=0;i<h;i+=70){x.beginPath();x.moveTo(0,i);x.lineTo(w,i);x.stroke();}
+    x.fillStyle='rgba(236,72,153,0.75)'; x.fillRect(0,210,w,90);
+    x.fillStyle='#fff'; x.font='900 48px Orbitron,sans-serif'; x.textAlign='center';
+    x.fillText('ECO—PUNK // 2088',w/2,268);
+    x.strokeStyle='#10b981'; x.lineWidth=6;
+    x.beginPath(); x.moveTo(w/2-130,500); x.lineTo(w/2,390); x.lineTo(w/2+130,500); x.lineTo(w/2,610); x.closePath(); x.stroke();
+    x.fillStyle='#10b981'; x.font='bold 26px Orbitron,sans-serif'; x.fillText('ZERO WASTE PROTOCOL',w/2,700);
+  } else if(preset==='D'){
+    // School Pride
+    x.fillStyle='#fffdf7'; x.fillRect(0,0,w,h);
+    x.fillStyle='#f59e0b'; x.fillRect(0,160,w,55);
+    x.fillStyle='#1e3a8a'; x.fillRect(0,225,w,110);
+    x.fillStyle='#fff'; x.font='900 56px Outfit,sans-serif'; x.textAlign='center';
+    x.fillText('GO GREEN TIGERS!',w/2,296);
+    x.fillStyle='#f59e0b'; x.beginPath(); x.arc(w/2,500,110,0,Math.PI*2); x.fill();
+    x.fillStyle='#fff'; x.font='bold 64px sans-serif'; x.fillText('🏆',w/2,520);
+    x.fillStyle='#1e3a8a'; x.font='800 34px Inter,sans-serif'; x.fillText('RECYCLING CHAMPIONS',w/2,780);
+  }
+
+  // Prompt band overlay
+  x.fillStyle='rgba(10,18,36,0.9)'; x.fillRect(w/2-300,60,600,60);
+  x.strokeStyle='#06b6d4'; x.lineWidth=3; x.strokeRect(w/2-300,60,600,60);
+  x.fillStyle='#06b6d4'; x.font='bold 26px Orbitron,sans-serif'; x.textAlign='center';
+  x.fillText(`${prompt.sideA.toUpperCase()}  VS  ${prompt.sideB.toUpperCase()}`,w/2,100);
+
+  if(drumTexture) drumTexture.needsUpdate=true;
+  return drumCanvas;
+}
+
+function updateLCD(){
+  if(!lcdCanvas){lcdCanvas=document.createElement('canvas');lcdCanvas.width=512;lcdCanvas.height=128;lcdCtx=lcdCanvas.getContext('2d');lcdTexture=new THREE.CanvasTexture(lcdCanvas);}
+  const x=lcdCtx, w=512, h=128;
+  x.fillStyle='#15803d'; x.fillRect(0,0,w,h);
+  x.fillStyle='rgba(0,0,0,0.12)';
+  for(let y=0;y<h;y+=4) x.fillRect(0,y,w,2);
+  x.strokeStyle='#052e16'; x.lineWidth=6; x.strokeRect(3,3,w-6,h-6);
+  x.fillStyle='#022c22'; x.font='900 26px Orbitron,monospace'; x.textAlign='left';
+  x.fillText(`A:${String(stats.countA).padStart(2,'0')} ${stats.weightA.toFixed(1)}kg`,16,44);
+  x.fillText(`B:${String(stats.countB).padStart(2,'0')} ${stats.weightB.toFixed(1)}kg`,268,44);
+  x.font='700 20px Orbitron,monospace'; x.textAlign='center';
+  x.fillText(`[ ${activePrompt.title.toUpperCase()} ]`,w/2,96);
+  lcdTexture.needsUpdate=true;
+}
+
+function updatePromptCard(){
+  if(!promptCanvas){promptCanvas=document.createElement('canvas');promptCanvas.width=512;promptCanvas.height=256;promptCtx=promptCanvas.getContext('2d');promptTexture=new THREE.CanvasTexture(promptCanvas);}
+  const x=promptCtx, w=512, h=256;
+  x.fillStyle='#0c1425'; x.fillRect(0,0,w,h);
+  x.strokeStyle='#06b6d4'; x.lineWidth=6; x.strokeRect(3,3,w-6,h-6);
+  x.fillStyle='#06b6d4'; x.fillRect(18,16,w-36,40);
+  x.fillStyle='#080c18'; x.font='900 20px Orbitron,sans-serif'; x.textAlign='center';
+  x.fillText('CAST YOUR VOTE NOW!',w/2,42);
+  x.fillStyle='#fff'; x.font='900 30px Outfit,sans-serif'; x.fillText(activePrompt.title,w/2,110);
+  x.fillStyle='#0284c7'; x.fillRect(28,145,215,55);
+  x.fillStyle='#fff'; x.font='bold 22px Orbitron,sans-serif'; x.fillText(`A: ${activePrompt.sideA}`,135,180);
+  x.fillStyle='#d97706'; x.fillRect(270,145,215,55);
+  x.fillStyle='#fff'; x.fillText(`B: ${activePrompt.sideB}`,377,180);
+  promptTexture.needsUpdate=true;
+}
+
+// ═══════════════════════════════════════════════
+//  THREE.JS SCENE INIT
+// ═══════════════════════════════════════════════
+function initScene(){
+  const ctr=document.getElementById('canvas-container');
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x050810);
+  scene.fog=new THREE.FogExp2(0x050810,0.035);
+
+  camera=new THREE.PerspectiveCamera(42,window.innerWidth/window.innerHeight,0.1,100);
+  camera.position.set(0,3.5,8);
+
+  renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.2;
+  ctr.appendChild(renderer.domElement);
+
+  controls=new THREE.OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true; controls.dampingFactor=0.06;
+  controls.maxPolarAngle=Math.PI/2+0.05;
+  controls.minDistance=3; controls.maxDistance=14;
+  controls.target.set(0,1.8,0);
+
+  setupLights();
+  setupEnvironment();
+  buildDrum();
+  buildHood();
+  createParticles();
+
+  window.addEventListener('resize',onResize);
+  window.addEventListener('keydown',onKey);
+  animate();
+}
+
+function setupLights(){
+  scene.add(new THREE.AmbientLight(0xdbeafe,0.55));
+  const key=new THREE.DirectionalLight(0xffffff,1.15);
+  key.position.set(5,10,7); key.castShadow=true;
+  key.shadow.mapSize.set(2048,2048); key.shadow.bias=-0.0001;
+  scene.add(key);
+  scene.add(new THREE.DirectionalLight(0x38bdf8,0.5).translateX(-6).translateY(6).translateZ(-4));
+  const r1=new THREE.PointLight(0x06b6d4,1.2,12); r1.position.set(-3,3,2); scene.add(r1);
+  const r2=new THREE.PointLight(0xf59e0b,1.0,12); r2.position.set(3,1.5,-2); scene.add(r2);
+}
+
+function setupEnvironment(){
+  // Pedestal
+  const pGeo=new THREE.CylinderGeometry(2.2,2.4,0.35,64);
+  const pMat=new THREE.MeshStandardMaterial({color:0x0c1425,roughness:0.35,metalness:0.85});
+  const ped=new THREE.Mesh(pGeo,pMat); ped.position.y=-0.17; ped.receiveShadow=true; scene.add(ped);
+  // Neon ring
+  const rGeo=new THREE.TorusGeometry(2.22,0.025,16,128);
+  const rMat=new THREE.MeshBasicMaterial({color:0x06b6d4});
+  const ring=new THREE.Mesh(rGeo,rMat); ring.rotation.x=Math.PI/2; ring.position.y=0.01; scene.add(ring);
+  // Grid floor
+  const grid=new THREE.GridHelper(30,40,0x06b6d4,0x0f172a); grid.position.y=-0.35; scene.add(grid);
+}
+
+// ═══════════════════════════════════════════════
+//  BUILD DRUM — LatheGeometry barrel profile
+// ═══════════════════════════════════════════════
+function buildDrum(){
+  drumGroup=new THREE.Group(); scene.add(drumGroup);
+
+  // — Barrel profile via LatheGeometry —
+  // Points define half-cross-section: (radius, height)
+  // Real barrel: bottom rim lip → belly → top rim lip
+  const pts=[];
+  const R=1.05, Rb=1.12, rimW=0.06; // base radius, belly max, rim overhang
+  const H=2.6;
+  // Bottom
+  pts.push(new THREE.Vector2(0, 0));           // center bottom
+  pts.push(new THREE.Vector2(R-0.02, 0));      // bottom flat
+  pts.push(new THREE.Vector2(R+rimW, 0.02));   // bottom rim lip out
+  pts.push(new THREE.Vector2(R+rimW, 0.08));   // bottom rim lip top
+  pts.push(new THREE.Vector2(R, 0.10));         // inward step
+  // Barrel belly curve (4 points)
+  pts.push(new THREE.Vector2(R+0.02, H*0.2));
+  pts.push(new THREE.Vector2(Rb, H*0.35));
+  pts.push(new THREE.Vector2(Rb+0.01, H*0.5)); // max belly
+  pts.push(new THREE.Vector2(Rb, H*0.65));
+  pts.push(new THREE.Vector2(R+0.02, H*0.8));
+  // Top
+  pts.push(new THREE.Vector2(R, H-0.10));      // inward step
+  pts.push(new THREE.Vector2(R+rimW, H-0.08)); // top rim lip bottom
+  pts.push(new THREE.Vector2(R+rimW, H-0.02)); // top rim lip out
+  pts.push(new THREE.Vector2(R-0.02, H));       // top flat
+  pts.push(new THREE.Vector2(0, H));            // center top
+
+  const drumGeo=new THREE.LatheGeometry(pts,64);
+  // Textures
+  const rawCvs=createRawPlasticCanvas();
+  const rawTex=new THREE.CanvasTexture(rawCvs);
+  rawPlasticMaterial=new THREE.MeshStandardMaterial({map:rawTex,roughness:0.55,metalness:0.1,bumpMap:rawTex,bumpScale:0.015});
+
+  const whiteCvs=createWhitePrimerCanvas();
+  const whiteTex=new THREE.CanvasTexture(whiteCvs);
+  whitePrimerMaterial=new THREE.MeshStandardMaterial({map:whiteTex,roughness:0.3,metalness:0.05});
+
+  drumCanvas=drawArtworkCanvas('A',activePrompt);
+  drumTexture=new THREE.CanvasTexture(drumCanvas);
+  drumMaterial=new THREE.MeshStandardMaterial({map:drumTexture,roughness:0.25,metalness:0.05});
+
+  // Pre-create transparent material (avoid leak)
+  transparentMaterial=new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:0.28,roughness:0.1,metalness:0.05,side:THREE.DoubleSide});
+
+  drumBodyMesh=new THREE.Mesh(drumGeo,rawPlasticMaterial);
+  drumBodyMesh.castShadow=true; drumBodyMesh.receiveShadow=true;
+  drumGroup.add(drumBodyMesh);
+
+  // Reinforcement barrel bands (correct local-space positions)
+  const bandGeo=new THREE.TorusGeometry(Rb+0.03,0.035,12,64);
+  const bandMat=new THREE.MeshStandardMaterial({color:0x1e293b,roughness:0.4,metalness:0.6});
+  const b1=new THREE.Mesh(bandGeo,bandMat); b1.rotation.x=Math.PI/2; b1.position.y=H*0.25; drumGroup.add(b1);
+  const b2=new THREE.Mesh(bandGeo,bandMat); b2.rotation.x=Math.PI/2; b2.position.y=H*0.75; drumGroup.add(b2);
+
+  // — Central Divider (hidden initially) —
+  const divGeo=new THREE.BoxGeometry(0.03,H-0.2,Rb*2-0.1);
+  const divMat=new THREE.MeshStandardMaterial({color:0x38bdf8,roughness:0.2,metalness:0.4,transparent:true,opacity:0.75});
+  dividerMesh=new THREE.Mesh(divGeo,divMat);
+  dividerMesh.position.y=H/2; dividerMesh.visible=false;
+  drumGroup.add(dividerMesh);
+
+  // — Load Cell Platforms (rectangular beams) —
+  const lcGeo=new THREE.BoxGeometry(0.8,0.06,1.4);
+  const lcMatA=new THREE.MeshStandardMaterial({color:0x0284c7,metalness:0.75,roughness:0.3});
+  const lcMatB=new THREE.MeshStandardMaterial({color:0xd97706,metalness:0.75,roughness:0.3});
+  loadCellA=new THREE.Mesh(lcGeo,lcMatA); loadCellA.position.set(-0.48,0.15,0); loadCellA.visible=false; drumGroup.add(loadCellA);
+  loadCellB=new THREE.Mesh(lcGeo,lcMatB); loadCellB.position.set(0.48,0.15,0); loadCellB.visible=false; drumGroup.add(loadCellB);
+  // Strain gauge markings on load cells
+  const sgGeo=new THREE.PlaneGeometry(0.3,0.04);
+  const sgMat=new THREE.MeshBasicMaterial({color:0xfbbf24});
+  const sg1=new THREE.Mesh(sgGeo,sgMat); sg1.rotation.x=-Math.PI/2; sg1.position.y=0.032; loadCellA.add(sg1);
+  const sg2=new THREE.Mesh(sgGeo,sgMat.clone()); sg2.rotation.x=-Math.PI/2; sg2.position.y=0.032; loadCellB.add(sg2);
+}
+
+// ═══════════════════════════════════════════════
+//  BUILD HOOD ASSEMBLY — Detailed EEE hardware
+// ═══════════════════════════════════════════════
+function buildHood(){
+  hoodGroup=new THREE.Group();
+  hoodGroup.position.y=2.6; hoodGroup.visible=false;
+  drumGroup.add(hoodGroup);
+
+  const darkMat=new THREE.MeshStandardMaterial({color:0x0c1425,roughness:0.35,metalness:0.7});
+
+  // — Lid Base —
+  const lidGeo=new THREE.CylinderGeometry(1.14,1.16,0.18,64);
+  const lid=new THREE.Mesh(lidGeo,darkMat); lid.position.y=0.09; lid.castShadow=true; hoodGroup.add(lid);
+
+  // — Slot Openings (recessed dark cuts) —
+  const slotGeo=new THREE.BoxGeometry(0.55,0.22,0.36);
+  const slotMat=new THREE.MeshStandardMaterial({color:0x050810,roughness:0.9,metalness:0});
+  const sA=new THREE.Mesh(slotGeo,slotMat); sA.position.set(-0.45,0.19,0); hoodGroup.add(sA);
+  const sB=new THREE.Mesh(slotGeo,slotMat); sB.position.set(0.45,0.19,0); hoodGroup.add(sB);
+
+  // — Servo Flaps —
+  const flapGeo=new THREE.BoxGeometry(0.48,0.025,0.32);
+  const flapMatA=new THREE.MeshStandardMaterial({color:0x0284c7,metalness:0.8,roughness:0.25});
+  const flapMatB=new THREE.MeshStandardMaterial({color:0xd97706,metalness:0.8,roughness:0.25});
+
+  leftFlapPivot=new THREE.Group();
+  leftFlapPivot.position.set(-0.7,0.17,0);
+  const lfm=new THREE.Mesh(flapGeo,flapMatA); lfm.position.x=0.24; leftFlapPivot.add(lfm);
+  hoodGroup.add(leftFlapPivot);
+
+  rightFlapPivot=new THREE.Group();
+  rightFlapPivot.position.set(0.7,0.17,0);
+  const rfm=new THREE.Mesh(flapGeo,flapMatB); rfm.position.x=-0.24; rightFlapPivot.add(rfm);
+  hoodGroup.add(rightFlapPivot);
+
+  // — Servo Motor Boxes (beside each flap hinge) —
+  const servoGeo=new THREE.BoxGeometry(0.12,0.10,0.12);
+  const servoMat=new THREE.MeshStandardMaterial({color:0x1e40af,metalness:0.6,roughness:0.4});
+  const sv1=new THREE.Mesh(servoGeo,servoMat); sv1.position.set(-0.7,0.12,0.22); hoodGroup.add(sv1);
+  const sv2=new THREE.Mesh(servoGeo,servoMat.clone()); sv2.position.set(0.7,0.12,0.22); hoodGroup.add(sv2);
+
+  // — IR Sensor Housings + LED Spheres —
+  const senGeo=new THREE.BoxGeometry(0.1,0.1,0.1);
+  const senMat=new THREE.MeshStandardMaterial({color:0x334155,metalness:0.85,roughness:0.3});
+  const ledGeo=new THREE.SphereGeometry(0.035,16,16);
+
+  const senA=new THREE.Mesh(senGeo,senMat); senA.position.set(-0.45,0.29,0.22); hoodGroup.add(senA);
+  leftSensorLight=new THREE.PointLight(0xef4444,0.7,1); leftSensorLight.position.set(-0.45,0.36,0.22); hoodGroup.add(leftSensorLight);
+  leftLedMesh=new THREE.Mesh(ledGeo,new THREE.MeshBasicMaterial({color:0xef4444}));
+  leftSensorLight.add(leftLedMesh);
+
+  const senB=new THREE.Mesh(senGeo,senMat); senB.position.set(0.45,0.29,0.22); hoodGroup.add(senB);
+  rightSensorLight=new THREE.PointLight(0xef4444,0.7,1); rightSensorLight.position.set(0.45,0.36,0.22); hoodGroup.add(rightSensorLight);
+  rightLedMesh=new THREE.Mesh(ledGeo,new THREE.MeshBasicMaterial({color:0xef4444}));
+  rightSensorLight.add(rightLedMesh);
+
+  // — ESP32 PCB Board (green rectangle with chip bumps) —
+  const pcbGeo=new THREE.BoxGeometry(0.35,0.03,0.22);
+  const pcbMat=new THREE.MeshStandardMaterial({color:0x166534,metalness:0.3,roughness:0.5});
+  const pcb=new THREE.Mesh(pcbGeo,pcbMat); pcb.position.set(0,0.06,-0.6); hoodGroup.add(pcb);
+  // Chip on PCB
+  const chipGeo=new THREE.BoxGeometry(0.1,0.02,0.08);
+  const chipMat=new THREE.MeshStandardMaterial({color:0x0f172a,metalness:0.9,roughness:0.2});
+  const chip=new THREE.Mesh(chipGeo,chipMat); chip.position.y=0.025; pcb.add(chip);
+  // Antenna trace
+  const antGeo=new THREE.BoxGeometry(0.02,0.015,0.12);
+  const antMat=new THREE.MeshStandardMaterial({color:0xfbbf24,metalness:0.8});
+  const ant=new THREE.Mesh(antGeo,antMat); ant.position.set(0.14,0.02,0); pcb.add(ant);
+
+  // — Wiring Harness (thin tubes from sensors/servos to PCB) —
+  const wireMat=new THREE.MeshBasicMaterial({color:0xef4444});
+  const wireGeo=new THREE.CylinderGeometry(0.008,0.008,0.6,8);
+  const w1=new THREE.Mesh(wireGeo,wireMat); w1.position.set(-0.3,0.1,-0.3); w1.rotation.x=Math.PI/4; hoodGroup.add(w1);
+  const w2=new THREE.Mesh(wireGeo,new THREE.MeshBasicMaterial({color:0x3b82f6})); w2.position.set(0.3,0.1,-0.3); w2.rotation.x=Math.PI/4; hoodGroup.add(w2);
+
+  // — LCD Display with Bezel Frame —
+  updateLCD();
+  const lcdBoxGeo=new THREE.BoxGeometry(0.82,0.28,0.06);
+  const lcdFrontMat=new THREE.MeshBasicMaterial({map:lcdTexture});
+  const lcdBzlMat=new THREE.MeshStandardMaterial({color:0x0f172a,roughness:0.5,metalness:0.6});
+  lcdMesh=new THREE.Mesh(lcdBoxGeo,[lcdBzlMat,lcdBzlMat,lcdBzlMat,lcdBzlMat,lcdFrontMat,lcdBzlMat]);
+  lcdMesh.position.set(0,0.23,1.14); hoodGroup.add(lcdMesh);
+  // Bezel rim
+  const bzlGeo=new THREE.BoxGeometry(0.88,0.34,0.02);
+  const bzl=new THREE.Mesh(bzlGeo,new THREE.MeshStandardMaterial({color:0x1e293b,metalness:0.7,roughness:0.3}));
+  bzl.position.z=-0.035; lcdMesh.add(bzl);
+
+  // — Prompt Banner Card —
+  updatePromptCard();
+  const pcGeo=new THREE.BoxGeometry(1.1,0.55,0.03);
+  const pcFront=new THREE.MeshBasicMaterial({map:promptTexture});
+  promptCardMesh=new THREE.Mesh(pcGeo,[lcdBzlMat,lcdBzlMat,lcdBzlMat,lcdBzlMat,pcFront,pcFront]);
+  promptCardMesh.position.set(0,0.72,0); hoodGroup.add(promptCardMesh);
+  // Support posts
+  const postGeo=new THREE.CylinderGeometry(0.018,0.018,0.38);
+  const p1=new THREE.Mesh(postGeo,lcdBzlMat); p1.position.set(-0.42,0.33,0); hoodGroup.add(p1);
+  const p2=new THREE.Mesh(postGeo,lcdBzlMat); p2.position.set(0.42,0.33,0); hoodGroup.add(p2);
+}
+
+// ═══════════════════════════════════════════════
+//  ATMOSPHERIC PARTICLES
+// ═══════════════════════════════════════════════
+function createParticles(){
+  const geo=new THREE.BufferGeometry();
+  const count=600;
+  const pos=new Float32Array(count*3);
+  for(let i=0;i<count;i++){
+    pos[i*3]=(Math.random()-0.5)*20;
+    pos[i*3+1]=Math.random()*8;
+    pos[i*3+2]=(Math.random()-0.5)*20;
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const mat=new THREE.PointsMaterial({color:0x06b6d4,size:0.025,transparent:true,opacity:0.35});
+  particles=new THREE.Points(geo,mat);
+  scene.add(particles);
+}
+
+// ═══════════════════════════════════════════════
+//  PET BOTTLE — Lathe profile
+// ═══════════════════════════════════════════════
+function createBottle(isSideA){
+  const g=new THREE.Group();
+  // Bottle body via lathe
+  const bp=[];
+  // Base indent
+  bp.push(new THREE.Vector2(0,0));
+  bp.push(new THREE.Vector2(0.08,0.01));
+  bp.push(new THREE.Vector2(0.10,0.02));
+  // Cylindrical body
+  bp.push(new THREE.Vector2(0.10,0.04));
+  bp.push(new THREE.Vector2(0.11,0.06));
+  bp.push(new THREE.Vector2(0.11,0.30));
+  // Shoulder taper
+  bp.push(new THREE.Vector2(0.09,0.34));
+  bp.push(new THREE.Vector2(0.06,0.36));
+  // Neck
+  bp.push(new THREE.Vector2(0.04,0.37));
+  bp.push(new THREE.Vector2(0.04,0.42));
+  // Thread ring
+  bp.push(new THREE.Vector2(0.05,0.42));
+  bp.push(new THREE.Vector2(0.05,0.43));
+  bp.push(new THREE.Vector2(0.04,0.43));
+  bp.push(new THREE.Vector2(0,0.43));
+
+  const bodyGeo=new THREE.LatheGeometry(bp,16);
+  const bodyMat=new THREE.MeshStandardMaterial({
+    color:isSideA?0x38bdf8:0xf59e0b,
+    transparent:true, opacity:0.6,
+    roughness:0.1, metalness:0.05
+  });
+  g.add(new THREE.Mesh(bodyGeo,bodyMat));
+  // Cap
+  const capGeo=new THREE.CylinderGeometry(0.042,0.042,0.05,12);
+  const capMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.4});
+  const cap=new THREE.Mesh(capGeo,capMat); cap.position.y=0.455; g.add(cap);
+  return g;
+}
+
+// ═══════════════════════════════════════════════
+//  VOTING SIMULATION — with debounce & cap
+// ═══════════════════════════════════════════════
+function castVote(side){
+  if(isVoting) return; // debounce lock
+  if(currentStep<5) goToStep(6);
+  isVoting=true;
+
+  const isA=side==='A';
+  const light=isA?leftSensorLight:rightSensorLight;
+  const ledMesh=isA?leftLedMesh:rightLedMesh;
+  const flap=isA?leftFlapPivot:rightFlapPivot;
+  const tx=isA?-0.45:0.45;
+
+  // 1. IR sensor flash green (light + LED mesh synced)
+  playBeep(1200,0.06);
+  light.color.setHex(0x10b981); light.intensity=3;
+  ledMesh.material.color.setHex(0x10b981);
+
+  // 2. Servo flap opens
+  setTimeout(()=>playServo(),50);
+  gsap.to(flap.rotation,{z:isA?-Math.PI/2.2:Math.PI/2.2, duration:0.25, ease:"power2.out"});
+
+  // 3. Spawn bottle
+  setTimeout(()=>{
+    spawnBottle(tx,isA);
+    setTimeout(()=>playClink(),300);
+  },120);
+
+  // 4. Close flap + reset sensor
+  setTimeout(()=>{
+    gsap.to(flap.rotation,{z:0,duration:0.35,ease:"back.out(1.5)"});
+    light.color.setHex(0xef4444); light.intensity=0.7;
+    ledMesh.material.color.setHex(0xef4444);
+  },650);
+
+  // 5. Update stats
+  if(isA){ stats.countA++; stats.weightA+=0.25; gsap.to(loadCellA.position,{y:0.10,duration:0.08,yoyo:true,repeat:1}); }
+  else   { stats.countB++; stats.weightB+=0.25; gsap.to(loadCellB.position,{y:0.10,duration:0.08,yoyo:true,repeat:1}); }
+
+  updateLCD(); updateUIStats();
+
+  // Milestone confetti
+  const tot=stats.countA+stats.countB;
+  if(tot%5===0){ playChime(); confetti({particleCount:50,spread:70,origin:{y:0.7}}); }
+
+  // Release debounce
+  setTimeout(()=>{ isVoting=false; },750);
+}
+
+function spawnBottle(tx,isA){
+  // Cap old bottles for performance
+  const sideCount=isA?stats.countA:stats.countB;
+  const sideBottles=bottles.filter(b=>b.userData.side===(isA?'A':'B'));
+  if(sideBottles.length>=MAX_BOTTLES_PER_SIDE){
+    const old=sideBottles[0];
+    drumGroup.remove(old);
+    old.traverse(ch=>{ if(ch.geometry)ch.geometry.dispose(); if(ch.material)ch.material.dispose(); });
+    bottles.splice(bottles.indexOf(old),1);
+  }
+
+  const bottle=createBottle(isA);
+  bottle.userData.side=isA?'A':'B';
+  bottle.position.set(tx+(Math.random()-.5)*0.08, 3.4, (Math.random()-.5)*0.08);
+  bottle.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,0);
+  drumGroup.add(bottle);
+  bottles.push(bottle);
+
+  const stackY=Math.min(0.22+sideCount*0.035, 1.9);
+  gsap.to(bottle.position,{y:stackY, x:tx+(Math.random()-.5)*0.35, z:(Math.random()-.5)*0.35, duration:0.5, ease:"bounce.out"});
+  gsap.to(bottle.rotation,{x:Math.PI/2+(Math.random()-.5), z:Math.random()*Math.PI, duration:0.5});
+}
+
+// ═══════════════════════════════════════════════
+//  STEP FLOW CONTROLLER
+// ═══════════════════════════════════════════════
+function goToStep(n){
+  if(n<1||n>TOTAL_STEPS) return;
+  currentStep=n;
+  const d=STEPS[n-1];
+
+  // Badge + title
+  document.getElementById('step-badge').textContent=`STEP ${n}/${TOTAL_STEPS}`;
+  document.getElementById('step-title').textContent=d.title;
+  document.getElementById('step-pct').textContent=`${Math.round(n/TOTAL_STEPS*100)}%`;
+
+  // Dots
+  document.querySelectorAll('.step-dot').forEach((dot,i)=>{
+    if(i+1===n) dot.className="step-dot h-1.5 rounded-full cursor-pointer transition-all bg-cyan-400 shadow-sm shadow-cyan-400/50 scale-y-150";
+    else if(i+1<n) dot.className="step-dot h-1.5 rounded-full cursor-pointer transition-all bg-slate-500";
+    else dot.className="step-dot h-1.5 rounded-full cursor-pointer transition-all bg-slate-700 hover:bg-slate-600";
+  });
+
+  // Narrative card fade transition
+  const card=document.getElementById('narrative-card');
+  card.classList.add('transitioning');
+  setTimeout(()=>{
+    document.getElementById('narrative-tag').textContent=d.tag;
+    document.getElementById('narrative-heading').textContent=d.heading;
+    document.getElementById('narrative-body').textContent=d.body;
+    document.getElementById('narrative-icon').className=`fa-solid ${d.icon} text-cyan-400 text-base`;
+    document.getElementById('narrative-specs').innerHTML=d.specs.map(s=>`<div class="flex justify-between items-center text-slate-400"><span>${s.l}</span><span class="font-mono ${s.c} font-semibold">${s.v}</span></div>`).join('');
+    card.classList.remove('transitioning');
+  },300);
+
+  // Buttons
+  document.getElementById('btn-prev').disabled=n===1;
+  const nb=document.getElementById('btn-next');
+  nb.innerHTML=n===TOTAL_STEPS?'Done <i class="fa-solid fa-check text-[10px]"></i>':'Next <i class="fa-solid fa-chevron-right text-[10px]"></i>';
+
+  apply3DStep(n);
+  renderActions(n);
+}
+function prevStep(){ goToStep(currentStep-1); }
+function nextStep(){ goToStep(currentStep+1); }
+
+function apply3DStep(step){
+  // HUD overlay
+  const hud=document.getElementById('iot-hud');
+  // Narrative & presenter panel visibility at Step 7
+  const narr=document.getElementById('narrative-card');
+  const pres=document.getElementById('presenter-panel');
+
+  if(step===7){
+    hud.style.display=''; setTimeout(()=>hud.classList.remove('opacity-0'),30);
+    narr.style.display='none'; pres.style.display='none';
+  } else {
+    hud.classList.add('opacity-0'); setTimeout(()=>hud.style.display='none',600);
+    narr.style.display=''; pres.style.display='';
+  }
+
+  // Reset transparent override if stepping away from manual toggle
+  isTransparentView=false;
+  document.getElementById('text-view-mode')&&(document.getElementById('text-view-mode').textContent='Solid');
+  const vIcon=document.getElementById('icon-view-mode');
+  if(vIcon) vIcon.className='fa-solid fa-cube text-emerald-400';
+
+  switch(step){
+    case 1:
+      drumBodyMesh.material=rawPlasticMaterial;
+      dividerMesh.visible=false; loadCellA.visible=false; loadCellB.visible=false; hoodGroup.visible=false;
+      moveCam({x:0,y:3.5,z:8},{x:0,y:1.3,z:0}); break;
+    case 2:
+      // Smooth paint wipe — animate via canvas
+      animatePaintWipe();
+      dividerMesh.visible=false; loadCellA.visible=false; loadCellB.visible=false; hoodGroup.visible=false;
+      moveCam({x:1.5,y:3,z:7},{x:0,y:1.3,z:0}); break;
+    case 3:
+      drawArtworkCanvas(activeArtworkPreset,activePrompt);
+      drumBodyMesh.material=drumMaterial;
+      dividerMesh.visible=false; loadCellA.visible=false; loadCellB.visible=false; hoodGroup.visible=false;
+      moveCam({x:0,y:2.5,z:6},{x:0,y:1.3,z:0}); break;
+    case 4:
+      drumBodyMesh.material=transparentMaterial;
+      dividerMesh.visible=true; loadCellA.visible=true; loadCellB.visible=true; hoodGroup.visible=false;
+      gsap.fromTo(dividerMesh.position,{y:4.5},{y:1.3,duration:0.8,ease:"bounce.out"});
+      gsap.fromTo(loadCellA.scale,{y:0},{y:1,duration:0.5,delay:0.3,ease:"back.out(2)"});
+      gsap.fromTo(loadCellB.scale,{y:0},{y:1,duration:0.5,delay:0.4,ease:"back.out(2)"});
+      moveCam({x:-3,y:3.2,z:5.5},{x:0,y:1.3,z:0}); break;
+    case 5:
+      drumBodyMesh.material=drumMaterial;
+      dividerMesh.visible=true; loadCellA.visible=true; loadCellB.visible=true; hoodGroup.visible=true;
+      gsap.fromTo(hoodGroup.position,{y:4.8},{y:2.6,duration:0.65,ease:"back.out(1.3)"}); playServo();
+      moveCam({x:0,y:3.8,z:5.5},{x:0,y:2.4,z:0}); break;
+    case 6:
+      drumBodyMesh.material=drumMaterial;
+      dividerMesh.visible=true; loadCellA.visible=true; loadCellB.visible=true; hoodGroup.visible=true;
+      moveCam({x:0,y:3.6,z:5},{x:0,y:2.3,z:0}); break;
+    case 7:
+      drumBodyMesh.material=drumMaterial;
+      dividerMesh.visible=true; loadCellA.visible=true; loadCellB.visible=true; hoodGroup.visible=true;
+      moveCam({x:0,y:3,z:7.5},{x:0,y:1.6,z:0}); break;
+  }
+}
+
+// ── Smooth Paint Wipe Animation (Step 2) ──
+function animatePaintWipe(){
+  // Use an off-screen canvas that wipes raw → white
+  const wipeCvs=document.createElement('canvas'); wipeCvs.width=1024; wipeCvs.height=1024;
+  const wipeCtx=wipeCvs.getContext('2d');
+  const rawCvs=createRawPlasticCanvas();
+  const whiteCvs=createWhitePrimerCanvas();
+  const wipeTex=new THREE.CanvasTexture(wipeCvs);
+  const wipeMat=new THREE.MeshStandardMaterial({map:wipeTex,roughness:0.4,metalness:0.08});
+  drumBodyMesh.material=wipeMat;
+
+  let progress={v:0};
+  gsap.to(progress,{v:1,duration:1.8,ease:"power2.inOut",
+    onUpdate:()=>{
+      // Draw raw, then overlay white with a wipe reveal
+      wipeCtx.drawImage(rawCvs,0,0);
+      const clipH=Math.floor(progress.v*1024);
+      if(clipH>0){
+        wipeCtx.save();
+        wipeCtx.beginPath(); wipeCtx.rect(0,0,1024,clipH); wipeCtx.clip();
+        wipeCtx.drawImage(whiteCvs,0,0);
+        wipeCtx.restore();
+      }
+      wipeTex.needsUpdate=true;
+    },
+    onComplete:()=>{
+      drumBodyMesh.material=whitePrimerMaterial;
+      wipeMat.dispose(); wipeTex.dispose();
+    }
+  });
+}
+
+function moveCam(pos,look){
+  gsap.to(camera.position,{...pos,duration:1.2,ease:"power2.inOut"});
+  gsap.to(controls.target,{...look,duration:1.2,ease:"power2.inOut",onUpdate:()=>controls.update()});
+}
+
+function renderActions(step){
+  const c=document.getElementById('step-actions');
+  if(step===3){
+    c.innerHTML=`<div class="flex items-center gap-1 bg-slate-900/70 p-0.5 rounded-xl border border-slate-800">
+      ${['A','B','C','D'].map(k=>{
+        const labels={A:'Anime',B:'Climate',C:'Cyberpunk',D:'School'};
+        const colors={A:'cyan',B:'emerald',C:'pink',D:'amber'};
+        const active=activeArtworkPreset===k;
+        return `<button onclick="selectArtwork('${k}')" class="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all ${active?`bg-${colors[k]}-500 text-slate-950 font-bold`:'text-slate-400 hover:text-white'}">${labels[k]}</button>`;
+      }).join('')}
+    </div>`;
+  } else if(step>=5&&step<=7){
+    c.innerHTML=`<div class="flex items-center gap-2">
+      <button onclick="castVote('A')" id="vbtn-a" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-lg shadow-cyan-500/15 active:scale-95 transition-all"><i class="fa-solid fa-bottle-water"></i>${activePrompt.sideA}</button>
+      <button onclick="castVote('B')" id="vbtn-b" class="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-lg shadow-amber-500/15 active:scale-95 transition-all"><i class="fa-solid fa-bottle-water"></i>${activePrompt.sideB}</button>
+    </div>`;
+  } else {
+    c.innerHTML='<span class="text-[11px] text-slate-500">Navigate with Next / Previous</span>';
+  }
+}
+
+function selectArtwork(k){ activeArtworkPreset=k; drawArtworkCanvas(k,activePrompt); if(currentStep===3) renderActions(3); }
+
+// ═══════════════════════════════════════════════
+//  PRESENTER CONTROLS
+// ═══════════════════════════════════════════════
+function changePrompt(v){
+  const cc=document.getElementById('custom-prompt-container');
+  if(v==='Custom'){cc.classList.remove('hidden');return;}
+  cc.classList.add('hidden');
+  const map={'Messi vs Ronaldo':{title:'Messi vs Ronaldo',sideA:'Messi',sideB:'Ronaldo'},'Tea vs Coffee':{title:'Tea vs Coffee',sideA:'Tea',sideB:'Coffee'},'Marvel vs DC':{title:'Marvel vs DC',sideA:'Marvel',sideB:'DC'},'Python vs JS':{title:'Python vs JavaScript',sideA:'Python',sideB:'JavaScript'}};
+  if(map[v]){activePrompt=map[v]; refreshPromptVisuals();}
+}
+function applyCustomPrompt(){
+  const t=document.getElementById('custom-prompt-title').value.trim()||"A vs B";
+  const a=document.getElementById('custom-side-a').value.trim()||"A";
+  const b=document.getElementById('custom-side-b').value.trim()||"B";
+  activePrompt={title:t,sideA:a,sideB:b}; refreshPromptVisuals();
+}
+function refreshPromptVisuals(){
+  drawArtworkCanvas(activeArtworkPreset,activePrompt);
+  updateLCD(); updatePromptCard(); updateUIStats();
+  if(currentStep>=5) renderActions(currentStep);
+}
+
+function updateUIStats(){
+  const tot=stats.countA+stats.countB, mass=stats.weightA+stats.weightB, inc=mass*25;
+  document.getElementById('stat-total-bottles').textContent=tot;
+  document.getElementById('stat-total-mass').textContent=mass.toFixed(2)+' kg';
+  document.getElementById('stat-total-income').textContent='৳ '+inc.toFixed(2);
+  // HUD
+  document.getElementById('hud-a-title').textContent='SIDE A: '+activePrompt.sideA.toUpperCase();
+  document.getElementById('hud-b-title').textContent='SIDE B: '+activePrompt.sideB.toUpperCase();
+  document.getElementById('hud-a-count').innerHTML=stats.countA+' <span class="text-[10px] font-normal text-slate-500">BOTTLES</span>';
+  document.getElementById('hud-b-count').innerHTML=stats.countB+' <span class="text-[10px] font-normal text-slate-500">BOTTLES</span>';
+  document.getElementById('hud-a-wt').textContent=stats.weightA.toFixed(2)+'kg';
+  document.getElementById('hud-b-wt').textContent=stats.weightB.toFixed(2)+'kg';
+  const pA=tot>0?Math.round(stats.countA/tot*100):50, pB=tot>0?100-pA:50;
+  document.getElementById('hud-a-pct').textContent=pA+'%';
+  document.getElementById('hud-b-pct').textContent=pB+'%';
+  document.getElementById('hud-bar-a').style.width=pA+'%';
+  document.getElementById('hud-bar-b').style.width=pB+'%';
+  document.getElementById('hud-income').textContent='৳ '+inc.toFixed(2);
+}
+
+function toggleAutoRotate(){
+  isAutoRotating=!isAutoRotating;
+  controls.autoRotate=isAutoRotating; controls.autoRotateSpeed=2;
+  document.getElementById('icon-auto-rotate').classList.toggle('animate-spin',isAutoRotating);
+}
+
+function toggleViewMode(){
+  isTransparentView=!isTransparentView;
+  const txt=document.getElementById('text-view-mode');
+  const ico=document.getElementById('icon-view-mode');
+  if(isTransparentView){
+    if(txt)txt.textContent='X-Ray';
+    ico.className='fa-solid fa-eye text-cyan-400';
+    drumBodyMesh.material=transparentMaterial;
+    dividerMesh.visible=true; loadCellA.visible=true; loadCellB.visible=true;
+  } else {
+    if(txt)txt.textContent='Solid';
+    ico.className='fa-solid fa-cube text-emerald-400';
+    apply3DStep(currentStep);
+  }
+}
+
+function toggleSound(){
+  soundEnabled=!soundEnabled;
+  document.getElementById('icon-sound').className=soundEnabled?'fa-solid fa-volume-high text-emerald-400':'fa-solid fa-volume-xmark text-slate-500';
+}
+
+function toggleFullscreen(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+}
+
+function toggleSpeakerGuide(){ document.getElementById('modal-guide').classList.toggle('hidden'); }
+
+function resetSimulation(){
+  stats={countA:0,weightA:0,countB:0,weightB:0};
+  bottles.forEach(b=>{ drumGroup.remove(b); b.traverse(ch=>{if(ch.geometry)ch.geometry.dispose();if(ch.material){if(Array.isArray(ch.material))ch.material.forEach(m=>m.dispose());else ch.material.dispose();}}); });
+  bottles=[];
+  updateLCD(); updateUIStats();
+}
+
+// ═══════════════════════════════════════════════
+//  KEYBOARD — with input guard
+// ═══════════════════════════════════════════════
+function onKey(e){
+  const tag=e.target.tagName;
+  if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return; // guard
+  if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();nextStep();}
+  if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();prevStep();}
+  if(e.key>='1'&&e.key<='7') goToStep(parseInt(e.key));
+  if(e.key==='f'||e.key==='F') toggleFullscreen();
+}
+
+function onResize(){
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  // Resize particle canvas
+  const pc=document.getElementById('particle-canvas');
+  pc.width=window.innerWidth; pc.height=window.innerHeight;
+}
+
+// ═══════════════════════════════════════════════
+//  2D PARTICLE ATMOSPHERE (Canvas overlay)
+// ═══════════════════════════════════════════════
+let dustMotes=[];
+function initDust(){
+  const c=document.getElementById('particle-canvas');
+  c.width=window.innerWidth; c.height=window.innerHeight;
+  for(let i=0;i<80;i++) dustMotes.push({
+    x:Math.random()*c.width, y:Math.random()*c.height,
+    r:Math.random()*1.5+0.5, vx:(Math.random()-.5)*0.3, vy:Math.random()*0.15+0.05,
+    a:Math.random()*0.3+0.1
+  });
+}
+function drawDust(){
+  const c=document.getElementById('particle-canvas');
+  const ctx=c.getContext('2d');
+  ctx.clearRect(0,0,c.width,c.height);
+  dustMotes.forEach(m=>{
+    m.x+=m.vx; m.y+=m.vy;
+    if(m.y>c.height+5){m.y=-5;m.x=Math.random()*c.width;}
+    if(m.x<-5||m.x>c.width+5) m.vx*=-1;
+    ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(6,182,212,${m.a})`; ctx.fill();
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER LOOP
+// ═══════════════════════════════════════════════
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  // Prompt card gentle sway
+  if(promptCardMesh&&hoodGroup.visible) promptCardMesh.rotation.y=Math.sin(Date.now()*0.001)*0.035;
+  // 3D particles drift
+  if(particles){
+    const pos=particles.geometry.attributes.position.array;
+    for(let i=0;i<pos.length;i+=3){ pos[i+1]+=0.002; if(pos[i+1]>8) pos[i+1]=0; }
+    particles.geometry.attributes.position.needsUpdate=true;
+  }
+  renderer.render(scene,camera);
+  drawDust();
+}
+
+// ═══════════════════════════════════════════════
+//  LOADING & SPLASH FLOW
+// ═══════════════════════════════════════════════
+function dismissSplash(){
+  document.getElementById('welcome-splash').classList.add('fade-out');
+  setTimeout(()=>{
+    document.getElementById('welcome-splash').style.display='none';
+    document.getElementById('main-ui').style.display='';
+    document.getElementById('narrative-card').style.display='';
+    document.getElementById('presenter-panel').style.display='';
+    document.getElementById('step-nav').style.display='';
+    goToStep(1);
+  },700);
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  // Init 3D scene behind loading screen
+  initScene();
+  initDust();
+
+  // Hide loading screen after a short delay to let CDN resources settle
+  setTimeout(()=>{
+    document.getElementById('loading-screen').classList.add('fade-out');
+    setTimeout(()=>{
+      document.getElementById('loading-screen').style.display='none';
+      document.getElementById('welcome-splash').classList.remove('hidden');
+    },600);
+  },1500);
+});
+</script>
+</body>
+</html>
