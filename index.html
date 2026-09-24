@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart Plastic Voting Bin — Interactive 3D Workshop Presentation</title>
   <meta name="description" content="Interactive 3D presentation showing how a raw plastic drum is transformed into an automated IoT-enabled Smart Voting Bin for school recycling workshops." />
+  <meta name="theme-color" content="#050810" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♻️</text></svg>" />
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -57,11 +59,15 @@
     ::-webkit-scrollbar-thumb{background:rgba(51,65,85,0.7);border-radius:4px}
 
     /* ── HUD pulse ── */
-    @keyframes hudPulse{0%,100%{opacity:.92;transform:scale(1)}50%{opacity:1;transform:scale(1.015)}}
+    /* uses `scale` (not `transform`) so it doesn't cancel Tailwind's -translate-x-1/2 centring */
+    @keyframes hudPulse{0%,100%{opacity:.92;scale:1}50%{opacity:1;scale:1.015}}
     .hud-pulse{animation:hudPulse 3s infinite ease-in-out}
 
     /* ── Particle canvas ── */
     #particle-canvas{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.45}
+
+    /* ── Presenter panel is collapsed on phones; toolbar button opens it ── */
+    #presenter-panel.panel-open{display:block!important}
   </style>
 </head>
 <body class="h-screen w-screen relative overflow-hidden">
@@ -110,11 +116,11 @@
 <!-- ╚══════════════════════════════════════════╝ -->
 <header id="main-ui" class="absolute top-0 left-0 right-0 z-20 p-3 md:p-4 flex justify-between items-center pointer-events-none" style="display:none">
   <!-- Logo -->
-  <div class="glass px-4 py-2 rounded-2xl flex items-center gap-3 pointer-events-auto">
+  <div class="glass px-2.5 py-2 md:px-4 rounded-2xl flex items-center gap-3 pointer-events-auto">
     <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-400 flex items-center justify-center text-slate-950 font-bold text-lg shadow-lg shadow-cyan-500/20">
       <i class="fa-solid fa-recycle"></i>
     </div>
-    <div>
+    <div class="hidden sm:block">
       <h1 class="font-outfit font-bold text-base md:text-lg leading-tight tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-400">Smart Plastic Voting Bin</h1>
       <p class="text-[10px] text-cyan-400 font-medium flex items-center gap-1.5">
         <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -124,21 +130,24 @@
   </div>
 
   <!-- Presenter Toolbar -->
-  <div class="flex items-center gap-1.5 pointer-events-auto">
-    <button id="btn-sound" onclick="toggleSound()" title="Toggle Sound Effects" class="glass hover:bg-slate-800/80 text-slate-400 hover:text-white w-9 h-9 rounded-xl text-xs flex items-center justify-center transition-all">
+  <div class="flex items-center gap-1 md:gap-1.5 pointer-events-auto">
+    <button id="btn-sound" onclick="toggleSound()" title="Toggle Sound Effects" aria-label="Toggle sound effects" class="glass hover:bg-slate-800/80 text-slate-400 hover:text-white w-9 h-9 rounded-xl text-xs flex items-center justify-center transition-all">
       <i id="icon-sound" class="fa-solid fa-volume-high text-emerald-400"></i>
     </button>
-    <button onclick="toggleAutoRotate()" title="Auto-Rotate" class="glass hover:bg-slate-800/80 text-slate-400 hover:text-white w-9 h-9 rounded-xl text-xs flex items-center justify-center transition-all">
+    <button onclick="toggleAutoRotate()" title="Auto-Rotate" aria-label="Toggle auto-rotate" class="glass hover:bg-slate-800/80 text-slate-400 hover:text-white w-9 h-9 rounded-xl text-xs flex items-center justify-center transition-all">
       <i id="icon-auto-rotate" class="fa-solid fa-arrows-spin text-cyan-400"></i>
     </button>
-    <button onclick="toggleViewMode()" title="Toggle Solid / Internal View" class="glass hover:bg-slate-800/80 text-slate-400 hover:text-white px-3 h-9 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all">
+    <button onclick="toggleViewMode()" title="Toggle Solid / X-Ray View" aria-label="Toggle solid or X-ray view" class="glass hover:bg-slate-800/80 text-slate-400 hover:text-white px-2.5 md:px-3 h-9 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all">
       <i id="icon-view-mode" class="fa-solid fa-cube text-emerald-400"></i>
       <span id="text-view-mode" class="hidden sm:inline">Solid</span>
     </button>
-    <button onclick="toggleFullscreen()" title="Fullscreen" class="glass hover:bg-slate-800/80 text-slate-400 hover:text-white w-9 h-9 rounded-xl text-xs flex items-center justify-center transition-all">
+    <button onclick="togglePresenterPanel()" title="Presenter Toolkit" aria-label="Show presenter toolkit" class="md:hidden glass hover:bg-slate-800/80 text-slate-400 hover:text-white w-9 h-9 rounded-xl text-xs flex items-center justify-center transition-all">
+      <i class="fa-solid fa-sliders text-cyan-400"></i>
+    </button>
+    <button onclick="toggleFullscreen()" title="Fullscreen" aria-label="Toggle fullscreen" class="hidden sm:flex glass hover:bg-slate-800/80 text-slate-400 hover:text-white w-9 h-9 rounded-xl text-xs items-center justify-center transition-all">
       <i class="fa-solid fa-expand text-slate-300"></i>
     </button>
-    <button onclick="toggleSpeakerGuide()" title="Workshop Guide" class="glass hover:bg-slate-800/80 text-amber-400 hover:text-amber-300 px-3 h-9 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all border-amber-500/20">
+    <button onclick="toggleSpeakerGuide()" title="Workshop Guide" aria-label="Open workshop guide" class="glass hover:bg-slate-800/80 text-amber-400 hover:text-amber-300 px-2.5 md:px-3 h-9 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all border-amber-500/20">
       <i class="fa-solid fa-lightbulb"></i>
       <span class="hidden sm:inline">Guide</span>
     </button>
@@ -148,7 +157,7 @@
 <!-- ╔══════════════════════════════════════════╗ -->
 <!-- ║     LEFT NARRATIVE CARD                  ║ -->
 <!-- ╚══════════════════════════════════════════╝ -->
-<div id="narrative-card" class="absolute top-16 md:top-20 left-3 md:left-5 z-20 w-72 md:w-80 lg:w-96 glass rounded-2xl p-4 md:p-5 shadow-2xl pointer-events-auto border-l-[3px] border-l-cyan-400" style="display:none">
+<div id="narrative-card" class="absolute top-16 md:top-20 left-3 right-3 md:right-auto md:left-5 z-20 md:w-80 lg:w-96 glass rounded-2xl p-4 md:p-5 shadow-2xl pointer-events-auto border-l-[3px] border-l-cyan-400" style="display:none">
   <div class="flex items-center gap-2 mb-2">
     <i id="narrative-icon" class="fa-solid fa-box text-cyan-400 text-base"></i>
     <span id="narrative-tag" class="text-[10px] font-orbitron uppercase tracking-wider text-cyan-400 font-semibold">Phase 1: Material Sourcing</span>
@@ -157,13 +166,13 @@
   <p id="narrative-body" class="text-[11px] text-slate-300 leading-relaxed mb-3">
     We start with an unpolished 200-liter HDPE plastic drum diverted from landfills.
   </p>
-  <div id="narrative-specs" class="bg-slate-900/60 rounded-xl p-2.5 border border-slate-800 space-y-1.5 text-[11px]"></div>
+  <div id="narrative-specs" class="hidden md:block bg-slate-900/60 rounded-xl p-2.5 border border-slate-800 space-y-1.5 text-[11px]"></div>
 </div>
 
 <!-- ╔══════════════════════════════════════════╗ -->
 <!-- ║  RIGHT PRESENTER TOOLKIT PANEL           ║ -->
 <!-- ╚══════════════════════════════════════════╝ -->
-<div id="presenter-panel" class="absolute top-16 md:top-20 right-3 md:right-5 z-20 w-64 md:w-72 glass rounded-2xl p-3 md:p-4 shadow-2xl pointer-events-auto" style="display:none">
+<div id="presenter-panel" class="hidden md:block absolute top-16 md:top-20 right-3 md:right-5 z-30 w-64 md:w-72 glass rounded-2xl p-3 md:p-4 shadow-2xl pointer-events-auto" style="display:none">
   <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800">
     <h4 class="font-outfit font-bold text-[11px] text-slate-200 flex items-center gap-1.5">
       <i class="fa-solid fa-sliders text-cyan-400"></i>Presenter Toolkit
@@ -194,7 +203,7 @@
   <!-- Stats -->
   <div class="space-y-1.5 text-[11px] pt-1">
     <div class="flex justify-between text-slate-400"><span>Bottles:</span><span id="stat-total-bottles" class="font-orbitron font-bold text-white">0</span></div>
-    <div class="flex justify-between text-slate-400"><span>Mass:</span><span id="stat-total-mass" class="font-orbitron font-bold text-cyan-400">0.00 kg</span></div>
+    <div class="flex justify-between text-slate-400"><span>Mass:</span><span id="stat-total-mass" class="font-orbitron font-bold text-cyan-400">0.000 kg</span></div>
     <div class="flex justify-between text-slate-400"><span>Revenue:</span><span id="stat-total-income" class="font-orbitron font-bold text-emerald-400">৳ 0.00</span></div>
   </div>
   <button onclick="resetSimulation()" class="w-full mt-3 bg-slate-800 hover:bg-slate-700 text-slate-400 text-[10px] font-semibold py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
@@ -236,7 +245,7 @@
       <div id="step-actions" class="flex-1 flex justify-center items-center gap-2 overflow-x-auto py-0.5">
         <span class="text-[11px] text-slate-500">Navigate with Next / Previous</span>
       </div>
-      <button id="btn-next" onclick="nextStep()" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold px-4 py-1.5 rounded-xl text-[11px] flex items-center gap-1.5 transition-all shadow-lg shadow-cyan-500/15">
+      <button id="btn-next" onclick="onNextButton()" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold px-4 py-1.5 rounded-xl text-[11px] flex items-center gap-1.5 transition-all shadow-lg shadow-cyan-500/15">
         Next<i class="fa-solid fa-chevron-right text-[10px]"></i>
       </button>
     </div>
@@ -248,7 +257,7 @@
 <!-- ╚══════════════════════════════════════════╝ -->
 <div id="iot-hud" class="absolute inset-0 z-10 pointer-events-none transition-opacity duration-700 opacity-0" style="display:none">
   <!-- Top Status Bar -->
-  <div class="absolute top-16 md:top-20 left-1/2 -translate-x-1/2 glass border-cyan-500/30 rounded-2xl px-4 py-2 flex items-center gap-4 md:gap-6 shadow-2xl hud-pulse pointer-events-auto text-[10px]">
+  <div class="absolute top-16 md:top-20 left-1/2 -translate-x-1/2 glass border-cyan-500/30 rounded-2xl px-4 py-2 flex items-center gap-4 md:gap-6 shadow-2xl hud-pulse pointer-events-auto text-[10px] whitespace-nowrap">
     <div class="flex items-center gap-2">
       <span class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
       <div><div class="font-orbitron uppercase text-slate-500 tracking-wider text-[8px]">STATUS</div><div class="font-orbitron font-bold text-emerald-400">MQTT SYNC: ONLINE</div></div>
@@ -260,19 +269,19 @@
   </div>
 
   <!-- Left: Side A -->
-  <div class="absolute left-3 md:left-8 top-1/2 -translate-y-1/2 w-56 md:w-64 glass border-cyan-500/30 rounded-2xl p-4 shadow-2xl pointer-events-auto space-y-2">
+  <div class="absolute left-3 md:left-8 top-28 md:top-1/2 md:-translate-y-1/2 w-[calc(50%-1.125rem)] md:w-64 glass border-cyan-500/30 rounded-2xl p-3 md:p-4 shadow-2xl pointer-events-auto space-y-2">
     <div class="flex items-center justify-between"><span id="hud-a-title" class="font-outfit font-bold text-xs text-cyan-400">SIDE A: MESSI</span><span class="text-[9px] font-orbitron text-slate-500">CH-1</span></div>
     <div class="text-2xl md:text-3xl font-orbitron font-black text-white" id="hud-a-count">0 <span class="text-[10px] font-normal text-slate-500">BOTTLES</span></div>
     <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800"><div id="hud-bar-a" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full w-0 transition-all duration-500"></div></div>
-    <div class="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wt: <strong id="hud-a-wt" class="text-cyan-400">0.00kg</strong></span><span>Share: <strong id="hud-a-pct" class="text-white">50%</strong></span></div>
+    <div class="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wt: <strong id="hud-a-wt" class="text-cyan-400">0.000kg</strong></span><span>Share: <strong id="hud-a-pct" class="text-white">50%</strong></span></div>
   </div>
 
   <!-- Right: Side B + Income -->
-  <div class="absolute right-3 md:right-8 top-1/2 -translate-y-1/2 w-60 md:w-72 glass border-amber-500/30 rounded-2xl p-4 shadow-2xl pointer-events-auto space-y-2">
+  <div class="absolute right-3 md:right-8 top-28 md:top-1/2 md:-translate-y-1/2 w-[calc(50%-1.125rem)] md:w-72 glass border-amber-500/30 rounded-2xl p-3 md:p-4 shadow-2xl pointer-events-auto space-y-2">
     <div class="flex items-center justify-between"><span id="hud-b-title" class="font-outfit font-bold text-xs text-amber-400">SIDE B: RONALDO</span><span class="text-[9px] font-orbitron text-slate-500">CH-2</span></div>
     <div class="text-2xl md:text-3xl font-orbitron font-black text-white" id="hud-b-count">0 <span class="text-[10px] font-normal text-slate-500">BOTTLES</span></div>
     <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800"><div id="hud-bar-b" class="bg-gradient-to-r from-amber-500 to-orange-500 h-full w-0 transition-all duration-500"></div></div>
-    <div class="flex justify-between text-[10px] text-slate-400 font-mono pb-2 border-b border-slate-800"><span>Wt: <strong id="hud-b-wt" class="text-amber-400">0.00kg</strong></span><span>Share: <strong id="hud-b-pct" class="text-white">50%</strong></span></div>
+    <div class="flex justify-between text-[10px] text-slate-400 font-mono pb-2 border-b border-slate-800"><span>Wt: <strong id="hud-b-wt" class="text-amber-400">0.000kg</strong></span><span>Share: <strong id="hud-b-pct" class="text-white">50%</strong></span></div>
     <div class="bg-slate-900/80 rounded-lg p-2.5 border border-emerald-500/25">
       <div class="flex items-center gap-1.5 text-emerald-400 font-bold text-[10px] mb-1"><i class="fa-solid fa-hand-holding-dollar"></i>Staff Revenue</div>
       <p class="text-[9px] text-slate-500 leading-snug mb-1.5">25 BDT/kg → direct micro-income for campus cleaning staff.</p>
@@ -317,7 +326,11 @@ let isAutoRotating = false;
 let isTransparentView = false;
 let isVoting = false;          // debounce lock
 let soundEnabled = true;
+let presentationStarted = false;
+let paintWipeTween = null;
 const MAX_BOTTLES_PER_SIDE = 25;
+const BOTTLE_MASS_KG = 0.025;  // typical empty 1–1.5 L PET bottle (~25 g)
+const BDT_PER_KG = 25;         // local PET scrap buy-back rate
 
 let activePrompt = { title: "Messi vs Ronaldo", sideA: "Messi", sideB: "Ronaldo" };
 let activeArtworkPreset = 'A';
@@ -353,11 +366,14 @@ const STEPS = [
     specs:[{l:"Partition",v:"Recycled Polycarbonate",c:"text-slate-200"},{l:"Sensors",v:"Dual HX711 Load Cells (50kg)",c:"text-cyan-400"},{l:"Accuracy",v:"± 2 grams per bottle",c:"text-emerald-400"}]},
   { title:"Step 5: The EEE Automation Hood", tag:"Phase 5 · Embedded Systems (EEE)", heading:"Servo Motors, IR Sensors & LCD Display", body:"The smart top lid snaps on! It houses two SG90 motorized servo flaps, infrared proximity sensors at each slot, a retro 16×2 LCD screen, an ESP32 microcontroller board, and a mounted prompt card banner.", icon:"fa-microchip",
     specs:[{l:"MCU",v:"ESP32 Wi-Fi / BT SoC",c:"text-indigo-400"},{l:"Actuators",v:"Dual SG90 90° Servo Flaps",c:"text-cyan-400"},{l:"Detection",v:"Active IR Proximity Sensors",c:"text-emerald-400"}]},
-  { title:"Step 6: Interactive Voting Demo", tag:"Phase 6 · Live Gamified Loop", heading:"Vote by Recycling a Bottle! (Interactive)", body:"Test the automated voting loop! Click Vote Left or Vote Right. Watch the IR sensor flash green, servo flap swing open, a 3D bottle drop in, and the LCD update weight & count in real-time.", icon:"fa-check-to-slot",
+  { title:"Step 6: Interactive Voting Demo", tag:"Phase 6 · Live Gamified Loop", heading:"Vote by Recycling a Bottle! (Interactive)", body:"Test the automated voting loop! Click a side's vote button below. Watch the IR sensor flash green, servo flap swing open, a 3D bottle drop in, and the LCD update weight & count in real-time. Switch to X-Ray view to see the bottles stack up inside.", icon:"fa-check-to-slot",
     specs:[{l:"Action",v:"Cast Bottle into Left or Right",c:"text-amber-400"},{l:"Feedback",v:"IR Flash → Servo → Drop → LCD",c:"text-emerald-400"},{l:"Display",v:"Live LCD Weight Counter",c:"text-cyan-400"}]},
   { title:"Step 7: IoT Telemetry & Dashboard", tag:"Phase 7 · Cloud Analytics & Impact", heading:"Real-Time Cloud Sync & Staff Income", body:"All bin metrics sync to the cloud via MQTT over the ESP32's Wi-Fi. School administrators monitor analytics dashboards, while plastic mass calculations automatically credit income (BDT) to campus cleaning staff!", icon:"fa-tower-broadcast",
     specs:[{l:"Protocol",v:"MQTT → AWS / Firebase",c:"text-cyan-400"},{l:"Social Impact",v:"Direct BDT Revenue for Staff",c:"text-emerald-400"},{l:"Outcome",v:"Zero Plastic Waste Campus",c:"text-amber-400"}]}
 ];
+
+// Escape user-entered text (custom voting topics) before it goes into innerHTML
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // ═══════════════════════════════════════════════
 //  PROCEDURAL AUDIO (Web Audio API)
@@ -533,8 +549,8 @@ function updateLCD(){
   for(let y=0;y<h;y+=4) x.fillRect(0,y,w,2);
   x.strokeStyle='#052e16'; x.lineWidth=6; x.strokeRect(3,3,w-6,h-6);
   x.fillStyle='#022c22'; x.font='900 26px Orbitron,monospace'; x.textAlign='left';
-  x.fillText(`A:${String(stats.countA).padStart(2,'0')} ${stats.weightA.toFixed(1)}kg`,16,44);
-  x.fillText(`B:${String(stats.countB).padStart(2,'0')} ${stats.weightB.toFixed(1)}kg`,268,44);
+  x.fillText(`A:${String(stats.countA).padStart(2,'0')} ${Math.round(stats.weightA*1000)}g`,16,44);
+  x.fillText(`B:${String(stats.countB).padStart(2,'0')} ${Math.round(stats.weightB*1000)}g`,268,44);
   x.font='700 20px Orbitron,monospace'; x.textAlign='center';
   x.fillText(`[ ${activePrompt.title.toUpperCase()} ]`,w/2,96);
   lcdTexture.needsUpdate=true;
@@ -580,7 +596,7 @@ function initScene(){
   controls=new THREE.OrbitControls(camera,renderer.domElement);
   controls.enableDamping=true; controls.dampingFactor=0.06;
   controls.maxPolarAngle=Math.PI/2+0.05;
-  controls.minDistance=3; controls.maxDistance=14;
+  controls.minDistance=3; controls.maxDistance=18;
   controls.target.set(0,1.8,0);
 
   setupLights();
@@ -621,6 +637,16 @@ function setupEnvironment(){
 // ═══════════════════════════════════════════════
 //  BUILD DRUM — LatheGeometry barrel profile
 // ═══════════════════════════════════════════════
+
+// Wrap a canvas around the drum twice (front + back) and centre the design on
+// the side facing the default camera (lathe U = 0 sits on the +Z side).
+function makeDrumTexture(canvas){
+  const t=new THREE.CanvasTexture(canvas);
+  t.wrapS=THREE.RepeatWrapping;
+  t.repeat.x=2; t.offset.x=0.5;
+  return t;
+}
+
 function buildDrum(){
   drumGroup=new THREE.Group(); scene.add(drumGroup);
 
@@ -650,17 +676,22 @@ function buildDrum(){
   pts.push(new THREE.Vector2(0, H));            // center top
 
   const drumGeo=new THREE.LatheGeometry(pts,64);
+  // Lathe UVs are spaced per profile point, which squeezes most of the artwork
+  // onto the rims and caps. Map V to height instead so the canvas covers the barrel evenly.
+  const uvAttr=drumGeo.attributes.uv, posAttr=drumGeo.attributes.position;
+  for(let i=0;i<uvAttr.count;i++) uvAttr.setY(i,posAttr.getY(i)/H);
+
   // Textures
   const rawCvs=createRawPlasticCanvas();
-  const rawTex=new THREE.CanvasTexture(rawCvs);
+  const rawTex=makeDrumTexture(rawCvs);
   rawPlasticMaterial=new THREE.MeshStandardMaterial({map:rawTex,roughness:0.55,metalness:0.1,bumpMap:rawTex,bumpScale:0.015});
 
   const whiteCvs=createWhitePrimerCanvas();
-  const whiteTex=new THREE.CanvasTexture(whiteCvs);
+  const whiteTex=makeDrumTexture(whiteCvs);
   whitePrimerMaterial=new THREE.MeshStandardMaterial({map:whiteTex,roughness:0.3,metalness:0.05});
 
   drumCanvas=drawArtworkCanvas('A',activePrompt);
-  drumTexture=new THREE.CanvasTexture(drumCanvas);
+  drumTexture=makeDrumTexture(drumCanvas);
   drumMaterial=new THREE.MeshStandardMaterial({map:drumTexture,roughness:0.25,metalness:0.05});
 
   // Pre-create transparent material (avoid leak)
@@ -670,25 +701,27 @@ function buildDrum(){
   drumBodyMesh.castShadow=true; drumBodyMesh.receiveShadow=true;
   drumGroup.add(drumBodyMesh);
 
-  // Reinforcement barrel bands (correct local-space positions)
+  // Reinforcement barrel bands — on the belly at ~1/3 and ~2/3 height, clear of the artwork slogans
   const bandGeo=new THREE.TorusGeometry(Rb+0.03,0.035,12,64);
   const bandMat=new THREE.MeshStandardMaterial({color:0x1e293b,roughness:0.4,metalness:0.6});
-  const b1=new THREE.Mesh(bandGeo,bandMat); b1.rotation.x=Math.PI/2; b1.position.y=H*0.25; drumGroup.add(b1);
-  const b2=new THREE.Mesh(bandGeo,bandMat); b2.rotation.x=Math.PI/2; b2.position.y=H*0.75; drumGroup.add(b2);
+  const b1=new THREE.Mesh(bandGeo,bandMat); b1.rotation.x=Math.PI/2; b1.position.y=H*0.36; drumGroup.add(b1);
+  const b2=new THREE.Mesh(bandGeo,bandMat); b2.rotation.x=Math.PI/2; b2.position.y=H*0.66; drumGroup.add(b2);
 
   // — Central Divider (hidden initially) —
-  const divGeo=new THREE.BoxGeometry(0.03,H-0.2,Rb*2-0.1);
+  // Sized to the narrowest (rim) radius so it never pokes through the drum wall
+  const divGeo=new THREE.BoxGeometry(0.03,H-0.2,R*2-0.1);
   const divMat=new THREE.MeshStandardMaterial({color:0x38bdf8,roughness:0.2,metalness:0.4,transparent:true,opacity:0.75});
   dividerMesh=new THREE.Mesh(divGeo,divMat);
   dividerMesh.position.y=H/2; dividerMesh.visible=false;
   drumGroup.add(dividerMesh);
 
   // — Load Cell Platforms (rectangular beams) —
-  const lcGeo=new THREE.BoxGeometry(0.8,0.06,1.4);
+  // Outer corners stay inside the base radius (≈1.0 < R)
+  const lcGeo=new THREE.BoxGeometry(0.7,0.06,1.2);
   const lcMatA=new THREE.MeshStandardMaterial({color:0x0284c7,metalness:0.75,roughness:0.3});
   const lcMatB=new THREE.MeshStandardMaterial({color:0xd97706,metalness:0.75,roughness:0.3});
-  loadCellA=new THREE.Mesh(lcGeo,lcMatA); loadCellA.position.set(-0.48,0.15,0); loadCellA.visible=false; drumGroup.add(loadCellA);
-  loadCellB=new THREE.Mesh(lcGeo,lcMatB); loadCellB.position.set(0.48,0.15,0); loadCellB.visible=false; drumGroup.add(loadCellB);
+  loadCellA=new THREE.Mesh(lcGeo,lcMatA); loadCellA.position.set(-0.45,0.15,0); loadCellA.visible=false; drumGroup.add(loadCellA);
+  loadCellB=new THREE.Mesh(lcGeo,lcMatB); loadCellB.position.set(0.45,0.15,0); loadCellB.visible=false; drumGroup.add(loadCellB);
   // Strain gauge markings on load cells
   const sgGeo=new THREE.PlaneGeometry(0.3,0.04);
   const sgMat=new THREE.MeshBasicMaterial({color:0xfbbf24});
@@ -891,8 +924,8 @@ function castVote(side){
   },650);
 
   // 5. Update stats
-  if(isA){ stats.countA++; stats.weightA+=0.25; gsap.to(loadCellA.position,{y:0.10,duration:0.08,yoyo:true,repeat:1}); }
-  else   { stats.countB++; stats.weightB+=0.25; gsap.to(loadCellB.position,{y:0.10,duration:0.08,yoyo:true,repeat:1}); }
+  if(isA){ stats.countA++; stats.weightA+=BOTTLE_MASS_KG; gsap.to(loadCellA.position,{y:0.10,duration:0.08,yoyo:true,repeat:1}); }
+  else   { stats.countB++; stats.weightB+=BOTTLE_MASS_KG; gsap.to(loadCellB.position,{y:0.10,duration:0.08,yoyo:true,repeat:1}); }
 
   updateLCD(); updateUIStats();
 
@@ -962,13 +995,17 @@ function goToStep(n){
   // Buttons
   document.getElementById('btn-prev').disabled=n===1;
   const nb=document.getElementById('btn-next');
-  nb.innerHTML=n===TOTAL_STEPS?'Done <i class="fa-solid fa-check text-[10px]"></i>':'Next <i class="fa-solid fa-chevron-right text-[10px]"></i>';
+  nb.innerHTML=n===TOTAL_STEPS?'Restart <i class="fa-solid fa-rotate-left text-[10px]"></i>':'Next <i class="fa-solid fa-chevron-right text-[10px]"></i>';
+
+  // Keep the step in the URL so a reload (or a shared link) lands on the same step
+  history.replaceState(null,'',`#step=${n}`);
 
   apply3DStep(n);
   renderActions(n);
 }
 function prevStep(){ goToStep(currentStep-1); }
 function nextStep(){ goToStep(currentStep+1); }
+function onNextButton(){ goToStep(currentStep===TOTAL_STEPS?1:currentStep+1); }
 
 function apply3DStep(step){
   // HUD overlay
@@ -979,11 +1016,15 @@ function apply3DStep(step){
 
   if(step===7){
     hud.style.display=''; setTimeout(()=>hud.classList.remove('opacity-0'),30);
-    narr.style.display='none'; pres.style.display='none';
+    narr.style.display='none'; pres.style.display='none'; pres.classList.remove('panel-open');
   } else {
-    hud.classList.add('opacity-0'); setTimeout(()=>hud.style.display='none',600);
+    hud.classList.add('opacity-0');
+    setTimeout(()=>{ if(currentStep!==7) hud.style.display='none'; },600);
     narr.style.display=''; pres.style.display='';
   }
+
+  // Stop a paint wipe that is still running from Step 2
+  if(paintWipeTween){ paintWipeTween.kill(); paintWipeTween=null; }
 
   // Reset transparent override if stepping away from manual toggle
   isTransparentView=false;
@@ -991,42 +1032,40 @@ function apply3DStep(step){
   const vIcon=document.getElementById('icon-view-mode');
   if(vIcon) vIcon.className='fa-solid fa-cube text-emerald-400';
 
+  if(step===3) drawArtworkCanvas(activeArtworkPreset,activePrompt);
+  applyStepVisuals(step);
+
   switch(step){
     case 1:
-      drumBodyMesh.material=rawPlasticMaterial;
-      dividerMesh.visible=false; loadCellA.visible=false; loadCellB.visible=false; hoodGroup.visible=false;
       moveCam({x:0,y:3.5,z:8},{x:0,y:1.3,z:0}); break;
     case 2:
       // Smooth paint wipe — animate via canvas
       animatePaintWipe();
-      dividerMesh.visible=false; loadCellA.visible=false; loadCellB.visible=false; hoodGroup.visible=false;
       moveCam({x:1.5,y:3,z:7},{x:0,y:1.3,z:0}); break;
     case 3:
-      drawArtworkCanvas(activeArtworkPreset,activePrompt);
-      drumBodyMesh.material=drumMaterial;
-      dividerMesh.visible=false; loadCellA.visible=false; loadCellB.visible=false; hoodGroup.visible=false;
       moveCam({x:0,y:2.5,z:6},{x:0,y:1.3,z:0}); break;
     case 4:
-      drumBodyMesh.material=transparentMaterial;
-      dividerMesh.visible=true; loadCellA.visible=true; loadCellB.visible=true; hoodGroup.visible=false;
       gsap.fromTo(dividerMesh.position,{y:4.5},{y:1.3,duration:0.8,ease:"bounce.out"});
       gsap.fromTo(loadCellA.scale,{y:0},{y:1,duration:0.5,delay:0.3,ease:"back.out(2)"});
       gsap.fromTo(loadCellB.scale,{y:0},{y:1,duration:0.5,delay:0.4,ease:"back.out(2)"});
       moveCam({x:-3,y:3.2,z:5.5},{x:0,y:1.3,z:0}); break;
     case 5:
-      drumBodyMesh.material=drumMaterial;
-      dividerMesh.visible=true; loadCellA.visible=true; loadCellB.visible=true; hoodGroup.visible=true;
       gsap.fromTo(hoodGroup.position,{y:4.8},{y:2.6,duration:0.65,ease:"back.out(1.3)"}); playServo();
       moveCam({x:0,y:3.8,z:5.5},{x:0,y:2.4,z:0}); break;
     case 6:
-      drumBodyMesh.material=drumMaterial;
-      dividerMesh.visible=true; loadCellA.visible=true; loadCellB.visible=true; hoodGroup.visible=true;
       moveCam({x:0,y:3.6,z:5},{x:0,y:2.3,z:0}); break;
     case 7:
-      drumBodyMesh.material=drumMaterial;
-      dividerMesh.visible=true; loadCellA.visible=true; loadCellB.visible=true; hoodGroup.visible=true;
       moveCam({x:0,y:3,z:7.5},{x:0,y:1.6,z:0}); break;
   }
+}
+
+// Drum material + which internal parts are shown at each step (no animation / camera)
+function applyStepVisuals(step){
+  const materials={1:rawPlasticMaterial,2:whitePrimerMaterial,3:drumMaterial,4:transparentMaterial};
+  drumBodyMesh.material=materials[step]||drumMaterial;
+  const internals=step>=4, hood=step>=5;
+  dividerMesh.visible=internals; loadCellA.visible=internals; loadCellB.visible=internals;
+  hoodGroup.visible=hood;
 }
 
 // ── Smooth Paint Wipe Animation (Step 2) ──
@@ -1034,14 +1073,17 @@ function animatePaintWipe(){
   // Use an off-screen canvas that wipes raw → white
   const wipeCvs=document.createElement('canvas'); wipeCvs.width=1024; wipeCvs.height=1024;
   const wipeCtx=wipeCvs.getContext('2d');
-  const rawCvs=createRawPlasticCanvas();
-  const whiteCvs=createWhitePrimerCanvas();
-  const wipeTex=new THREE.CanvasTexture(wipeCvs);
+  // Reuse the Step 1 / primer canvases so the wipe starts from exactly what was on screen
+  const rawCvs=rawPlasticMaterial.map.image;
+  const whiteCvs=whitePrimerMaterial.map.image;
+  wipeCtx.drawImage(rawCvs,0,0);
+  const wipeTex=makeDrumTexture(wipeCvs);
   const wipeMat=new THREE.MeshStandardMaterial({map:wipeTex,roughness:0.4,metalness:0.08});
   drumBodyMesh.material=wipeMat;
+  const disposeWipe=()=>{ wipeMat.dispose(); wipeTex.dispose(); };
 
   let progress={v:0};
-  gsap.to(progress,{v:1,duration:1.8,ease:"power2.inOut",
+  paintWipeTween=gsap.to(progress,{v:1,duration:1.8,ease:"power2.inOut",
     onUpdate:()=>{
       // Draw raw, then overlay white with a wipe reveal
       wipeCtx.drawImage(rawCvs,0,0);
@@ -1055,15 +1097,21 @@ function animatePaintWipe(){
       wipeTex.needsUpdate=true;
     },
     onComplete:()=>{
-      drumBodyMesh.material=whitePrimerMaterial;
-      wipeMat.dispose(); wipeTex.dispose();
-    }
+      // Only swap in the primer if X-Ray view didn't take over mid-wipe
+      if(drumBodyMesh.material===wipeMat) drumBodyMesh.material=whitePrimerMaterial;
+      paintWipeTween=null;
+      disposeWipe();
+    },
+    onInterrupt:disposeWipe
   });
 }
 
 function moveCam(pos,look){
-  gsap.to(camera.position,{...pos,duration:1.2,ease:"power2.inOut"});
-  gsap.to(controls.target,{...look,duration:1.2,ease:"power2.inOut",onUpdate:()=>controls.update()});
+  // Portrait screens have a much narrower horizontal FOV — pull the camera back so the bin still fits
+  const k=Math.max(1,0.75/camera.aspect);
+  pos={x:look.x+(pos.x-look.x)*k, y:look.y+(pos.y-look.y)*k, z:look.z+(pos.z-look.z)*k};
+  gsap.to(camera.position,{...pos,duration:1.2,ease:"power2.inOut",overwrite:'auto'});
+  gsap.to(controls.target,{...look,duration:1.2,ease:"power2.inOut",overwrite:'auto',onUpdate:()=>controls.update()});
 }
 
 function renderActions(step){
@@ -1079,8 +1127,8 @@ function renderActions(step){
     </div>`;
   } else if(step>=5&&step<=7){
     c.innerHTML=`<div class="flex items-center gap-2">
-      <button onclick="castVote('A')" id="vbtn-a" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-lg shadow-cyan-500/15 active:scale-95 transition-all"><i class="fa-solid fa-bottle-water"></i>${activePrompt.sideA}</button>
-      <button onclick="castVote('B')" id="vbtn-b" class="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-lg shadow-amber-500/15 active:scale-95 transition-all"><i class="fa-solid fa-bottle-water"></i>${activePrompt.sideB}</button>
+      <button onclick="castVote('A')" id="vbtn-a" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-lg shadow-cyan-500/15 active:scale-95 transition-all"><i class="fa-solid fa-bottle-water"></i>${esc(activePrompt.sideA)}</button>
+      <button onclick="castVote('B')" id="vbtn-b" class="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-lg shadow-amber-500/15 active:scale-95 transition-all"><i class="fa-solid fa-bottle-water"></i>${esc(activePrompt.sideB)}</button>
     </div>`;
   } else {
     c.innerHTML='<span class="text-[11px] text-slate-500">Navigate with Next / Previous</span>';
@@ -1112,17 +1160,17 @@ function refreshPromptVisuals(){
 }
 
 function updateUIStats(){
-  const tot=stats.countA+stats.countB, mass=stats.weightA+stats.weightB, inc=mass*25;
+  const tot=stats.countA+stats.countB, mass=stats.weightA+stats.weightB, inc=mass*BDT_PER_KG;
   document.getElementById('stat-total-bottles').textContent=tot;
-  document.getElementById('stat-total-mass').textContent=mass.toFixed(2)+' kg';
+  document.getElementById('stat-total-mass').textContent=mass.toFixed(3)+' kg';
   document.getElementById('stat-total-income').textContent='৳ '+inc.toFixed(2);
   // HUD
   document.getElementById('hud-a-title').textContent='SIDE A: '+activePrompt.sideA.toUpperCase();
   document.getElementById('hud-b-title').textContent='SIDE B: '+activePrompt.sideB.toUpperCase();
   document.getElementById('hud-a-count').innerHTML=stats.countA+' <span class="text-[10px] font-normal text-slate-500">BOTTLES</span>';
   document.getElementById('hud-b-count').innerHTML=stats.countB+' <span class="text-[10px] font-normal text-slate-500">BOTTLES</span>';
-  document.getElementById('hud-a-wt').textContent=stats.weightA.toFixed(2)+'kg';
-  document.getElementById('hud-b-wt').textContent=stats.weightB.toFixed(2)+'kg';
+  document.getElementById('hud-a-wt').textContent=stats.weightA.toFixed(3)+'kg';
+  document.getElementById('hud-b-wt').textContent=stats.weightB.toFixed(3)+'kg';
   const pA=tot>0?Math.round(stats.countA/tot*100):50, pB=tot>0?100-pA:50;
   document.getElementById('hud-a-pct').textContent=pA+'%';
   document.getElementById('hud-b-pct').textContent=pB+'%';
@@ -1149,7 +1197,7 @@ function toggleViewMode(){
   } else {
     if(txt)txt.textContent='Solid';
     ico.className='fa-solid fa-cube text-emerald-400';
-    apply3DStep(currentStep);
+    applyStepVisuals(currentStep);
   }
 }
 
@@ -1165,6 +1213,9 @@ function toggleFullscreen(){
 
 function toggleSpeakerGuide(){ document.getElementById('modal-guide').classList.toggle('hidden'); }
 
+// Phones only: the presenter panel is collapsed by default (see #presenter-panel CSS)
+function togglePresenterPanel(){ document.getElementById('presenter-panel').classList.toggle('panel-open'); }
+
 function resetSimulation(){
   stats={countA:0,weightA:0,countB:0,weightB:0};
   bottles.forEach(b=>{ drumGroup.remove(b); b.traverse(ch=>{if(ch.geometry)ch.geometry.dispose();if(ch.material){if(Array.isArray(ch.material))ch.material.forEach(m=>m.dispose());else ch.material.dispose();}}); });
@@ -1178,6 +1229,14 @@ function resetSimulation(){
 function onKey(e){
   const tag=e.target.tagName;
   if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return; // guard
+  if(!presentationStarted){
+    // Welcome splash: Enter / Space / → begins the presentation, other keys wait
+    const splashShown=!document.getElementById('welcome-splash').classList.contains('hidden');
+    if(splashShown&&(e.key==='Enter'||e.key===' '||e.key==='ArrowRight')){e.preventDefault();dismissSplash();}
+    return;
+  }
+  const guide=document.getElementById('modal-guide');
+  if(e.key==='Escape'&&!guide.classList.contains('hidden')){toggleSpeakerGuide();return;}
   if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();nextStep();}
   if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();prevStep();}
   if(e.key>='1'&&e.key<='7') goToStep(parseInt(e.key));
@@ -1240,7 +1299,9 @@ function animate(){
 // ═══════════════════════════════════════════════
 //  LOADING & SPLASH FLOW
 // ═══════════════════════════════════════════════
-function dismissSplash(){
+function dismissSplash(startStep=1){
+  if(presentationStarted) return;
+  presentationStarted=true;
   document.getElementById('welcome-splash').classList.add('fade-out');
   setTimeout(()=>{
     document.getElementById('welcome-splash').style.display='none';
@@ -1248,7 +1309,7 @@ function dismissSplash(){
     document.getElementById('narrative-card').style.display='';
     document.getElementById('presenter-panel').style.display='';
     document.getElementById('step-nav').style.display='';
-    goToStep(1);
+    goToStep(startStep);
   },700);
 }
 
@@ -1257,12 +1318,24 @@ window.addEventListener('DOMContentLoaded',()=>{
   initScene();
   initDust();
 
+  // Canvas textures (drum art, LCD, prompt card) are first drawn before the web
+  // fonts arrive, so redraw them once Orbitron / Outfit / Inter are available.
+  if(document.fonts){
+    Promise.all(['900 26px Orbitron','900 30px Outfit','bold 38px Inter'].map(f=>document.fonts.load(f)))
+      .then(()=>{ drawArtworkCanvas(activeArtworkPreset,activePrompt); updateLCD(); updatePromptCard(); })
+      .catch(()=>{});
+  }
+
+  // A link like index.html#step=6 skips the splash and opens that step directly
+  const linkedStep=parseInt((location.hash.match(/^#step=(\d+)$/)||[])[1],10);
+
   // Hide loading screen after a short delay to let CDN resources settle
   setTimeout(()=>{
     document.getElementById('loading-screen').classList.add('fade-out');
     setTimeout(()=>{
       document.getElementById('loading-screen').style.display='none';
-      document.getElementById('welcome-splash').classList.remove('hidden');
+      if(linkedStep>=1&&linkedStep<=TOTAL_STEPS) dismissSplash(linkedStep);
+      else document.getElementById('welcome-splash').classList.remove('hidden');
     },600);
   },1500);
 });
