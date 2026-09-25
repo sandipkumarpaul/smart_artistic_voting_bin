@@ -1,6 +1,6 @@
 # Smart Plastic Voting Bin
 
-An interactive 3D presentation of an upcycled recycling bin where throwing away a plastic bottle counts as a vote.
+An interactive 3D presentation of an upcycled recycling bin where throwing away a plastic bottle counts as a vote. Co-developed by Sandip Kumar Paul and Tanjila Afsari Rubina.
 
 **[Live demo](https://sandipkumarpaul.github.io/smart_artistic_voting_bin/)** · [Jump straight to the voting demo](https://sandipkumarpaul.github.io/smart_artistic_voting_bin/#step=6)
 
